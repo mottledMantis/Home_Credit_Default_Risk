@@ -1,5 +1,10 @@
-<<<<<<< HEAD
 library(tidyverse)
+library(fastDummies)
+
+#at visualization time, make histogram for numerical features
+#bar plot for the categorical data
+
+
 application_test <- read_csv("data/application_test.csv")
 application_train <- read_csv("data/application_train.csv")
 bureau <- read_csv("data/bureau.csv")
@@ -19,6 +24,4 @@ View(installments_payments)
 View(POS_CASH_balance)
 View(previous_application)
 View(sample_submission)
-=======
-library(tidyverse)
->>>>>>> 8233f9232b0129d7f47058cb29b88b2c963b774a
+
