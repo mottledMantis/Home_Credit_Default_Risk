@@ -3,8 +3,8 @@ title: 'Capstone Project Proposal: Home Credit Default Risk'
 author: "James Matheson"
 date: "June 21, 2018"
 output:
-  html_document: default
   word_document: default
+  html_document: default
 ---
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -30,7 +30,7 @@ It consists of:
 8. HomeCredit_columns_description.csv - column descriptions for the other files.
 
 #Proposed solution
-1. Clean and merge the "train" data to get a single data frame (if possible!) that contains all of the above files in simple
+1. Clean and merge the "train" data to get a single data frame (if possible!) that contains all of the above files.
 2. Examine the data to find strong collelations with debtors' abilty to repay the loans.
 3. Create an R program to test for default risk.
 4. Apply this test to the "test" data and examine the results.
