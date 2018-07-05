@@ -21,11 +21,19 @@ knitr::opts_chunk$set(echo = TRUE)
 
 
 #Steps per file
-##bureau has multiple rows per applicant - simplify this data separately for import into train_merge and test_merge
+##bureau has multiple rows per applicant
+simplify this data separately for import into train_merge and test_merge
 
-##bureau_balance - multiple rows per SK_ID_BUREAU - can use filter(bureau_balance, sk_id_bureau == "_number to filter_on")
+##bureau_balance - multiple rows per SK_ID_BUREAU
+can use filter(bureau_balance, sk_id_bureau == "_number to filter_on")
 
-##credit_card_balance - up to 96 months of card balance data per applicant, in multiple rows
+##credit_card_balance
+up to 96 months of card balance data per applicant, in multiple rows
 
-##installments_payments - multiple rows per applicant - to view use dplyr::arrange(installments_payments, SK_ID_PREV, NUM_INSTALMENT_NUMBER)
+##installments_payments
+multiple rows per applicant
+to view use dplyr::arrange(installments_payments, SK_ID_PREV, NUM_INSTALMENT_NUMBER)
 
+##POS_CASH_balance
+multiple rows per applicant
+credit histtory on point of sale and cash balance credit

@@ -26,3 +26,5 @@ HomeCredit_columns_description <- read_csv("data/HomeCredit_columns_description.
 # View(previous_application)
 # View(sample_submission)
 # View(HomeCredit_columns_description)
+
+# to try: aggregate(table[cols to mean, eg 2:5]), list(table$categorical), mean)
