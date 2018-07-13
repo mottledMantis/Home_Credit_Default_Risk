@@ -23,12 +23,14 @@ knitr::opts_chunk$set(echo = TRUE)
 #Steps per file
 ##bureau has multiple rows per applicant
 simplify this data separately for import into train_merge and test_merge
+- 
 
 ##bureau_balance - multiple rows per SK_ID_BUREAU
 can use filter(bureau_balance, sk_id_bureau == "_number to filter_on")
 
 ##credit_card_balance
 up to 96 months of card balance data per applicant, in multiple rows
+- check percentage of missed payments
 
 ##installments_payments
 multiple rows per applicant
