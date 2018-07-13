@@ -1,0 +1,17 @@
+---
+title: "Data Wrangling Steps"
+author: "James Matheson"
+date: "July 13, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# DATA WRANLING STEPS COMPLETED
+1. combined "application_test" and "application_train" sets into a new frame, "application_all"
+2. created "results" data frame into which I will dump relevant columns from source data sets, including "application_all" - I will continue to add columns that present simplified data from multiple row in complex data sets AND relevant info from "application_all"
+3. created "na_count" data frame to examine the number and percentage of NA values for each column in "application_all". Because "application_all" columns 42 and 45 to 91 have over 47% NA values, they will be disregarded at this stage. Perhaps I will reexamine them as I refine the model at a later stage.
+added "Age" and "YRS_EMPLOYED" cols to "results" data frame - takes relevant columns from "application_all" and divides by 365.25
+4. created "outliers_emp" data frame to look for outlying number of days employed. Filtering for high numbers, determined that a special value of 365243 is used for penioners (64,625) and unemployed (23).

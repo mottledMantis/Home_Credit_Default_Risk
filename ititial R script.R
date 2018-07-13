@@ -46,12 +46,61 @@ bureau_grouped_ID <- group_by(bureau, SK_ID_CURR) %>%
 
 results <- data.frame("SK_ID_CURR" = application_all$SK_ID_CURR,
                       "TARGET" = application_all$TARGET,
-                      "ALL_INCOME" = application_all$AMT_INCOME_TOTAL)
+                      "LOAN_TYPE" = application_all$NAME_CONTRACT_TYPE,
+                      "AGE" = abs(application_all$DAYS_BIRTH / 365.25),
+                      "GENDER" = application_all$CODE_GENDER,
+                      "OWNS_CAR" = application_all$FLAG_OWN_CAR,
+                      "AGE_OF_CAR" = application_all$OWN_CAR_AGE,
+                      "OWNS_REALTY" = application_all$FLAG_OWN_REALTY,
+                      "CHILDREN" = application_all$CNT_CHILDREN,
+                      "TOTAL_INCOME" = application_all$AMT_INCOME_TOTAL,
+                      "ALL_INCOME" = application_all$AMT_INCOME_TOTAL,
+                      "LOAN_AMOUNT" = application_all$AMT_CREDIT,
+                      "ANNUITY_AMOUNT" = application_all$AMT_ANNUITY,
+                      "PURCHASE_PRICE_OF_GOODS" = application_all$AMT_GOODS_PRICE,
+                      "RATIO_LOAN_TO_ANNUITY" = (application_all$AMT_CREDIT / application_all$AMT_ANNUITY),
+                      "INCOME_TYPE" = application_all$NAME_INCOME_TYPE,
+                      "EDUCATION" = application_all$NAME_EDUCATION_TYPE,
+                      "MARITAL_STATUS" = application_all$NAME_FAMILY_STATUS,
+                      "HOUSING_STATUS" = application_all$NAME_HOUSING_TYPE,
+                      "YEARS_AT_CURRENT_JOB" = abs(application_all$DAYS_EMPLOYED / 365.25),
+                      "EMPLOYER_TYPE" = application_all$ORGANIZATION_TYPE,
+                      "YEARS_SINCE_GETTING_IDENTITY_DOCUMENT" = abs(application_all$DAYS_REGISTRATION / 365.25),
+                      "REGION_AND_CITY_RATING" = application_all$REGION_RATING_CLIENT_W_CITY
+                      )
 results <- merge(results, bureau_grouped_ID, by.x = 1, by.y = 1, all = TRUE)
+
+
 
 # Since NA values mean no information and we are looking for a positive flag
 #for overdue payments, might as well make NA values in "max" <- 0
 results$MAX_DAYS_LATE_BUREAU[is.na(results$MAX_DAYS_LATE_BUREAU)] <- 0
+
+
+# create results_train byt removing samples with TARGET == NA
+results_train <- filter(results, is.na(results$TARGET) == FALSE)
+View(results_train)
+
+#Look for NAs
+na_count <- data.frame("Num_NAs" = sapply(application_all, function(y) sum(length(which(is.na(y))))))
+na_count$percent_NAs <- as.integer(100 * na_count$Num_NAs / nrow(application_all))
+View(na_count)
+
+
+#create a function for converting days to years - use 365.25 to account for leap years
+d_to_y <- function (days) {
+  days / 365.25
+}
+
+#convert days values to years and add to "results"
+results$AGE <- -(d_to_y(application_all$DAYS_BIRTH))
+results$YRS_EMPLOYED <- -(d_to_y(application_all$DAYS_EMPLOYED))
+
+#The following creates a df that shows that all major outliers for
+#days_employed are pensioners, and a few unemplyed
+outliers_emp <- data.frame(filter(application_all, DAYS_EMPLOYED > 10000))
+View(outliers_emp)
+
 
 #plot something
 # ggplot(results, aes(x = as.factor(results$TARGET), y = results$MAX_DAYS_LATE_BUREAU)) +
