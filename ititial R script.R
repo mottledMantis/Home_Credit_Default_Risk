@@ -54,9 +54,8 @@ results <- data.frame("SK_ID_CURR" = application_all$SK_ID_CURR,
                       "OWNS_REALTY" = application_all$FLAG_OWN_REALTY,
                       "CHILDREN" = application_all$CNT_CHILDREN,
                       "TOTAL_INCOME" = application_all$AMT_INCOME_TOTAL,
-                      "ALL_INCOME" = application_all$AMT_INCOME_TOTAL,
                       "LOAN_AMOUNT" = application_all$AMT_CREDIT,
-                      "ANNUITY_AMOUNT" = application_all$AMT_ANNUITY,
+                      "PAYMENT_AMOUNT" = application_all$AMT_ANNUITY,
                       "PURCHASE_PRICE_OF_GOODS" = application_all$AMT_GOODS_PRICE,
                       "RATIO_LOAN_TO_ANNUITY" = (application_all$AMT_CREDIT / application_all$AMT_ANNUITY),
                       "INCOME_TYPE" = application_all$NAME_INCOME_TYPE,
@@ -81,6 +80,10 @@ results$MAX_DAYS_LATE_BUREAU[is.na(results$MAX_DAYS_LATE_BUREAU)] <- 0
 results_train <- filter(results, is.na(results$TARGET) == FALSE)
 View(results_train)
 
+
+#write the results_train data to a csv file
+write_csv(results_train, "results_train.csv")
+
 #Look for NAs
 na_count <- data.frame("Num_NAs" = sapply(application_all, function(y) sum(length(which(is.na(y))))))
 na_count$percent_NAs <- as.integer(100 * na_count$Num_NAs / nrow(application_all))
@@ -92,9 +95,7 @@ d_to_y <- function (days) {
   days / 365.25
 }
 
-#convert days values to years and add to "results"
-results$AGE <- -(d_to_y(application_all$DAYS_BIRTH))
-results$YRS_EMPLOYED <- -(d_to_y(application_all$DAYS_EMPLOYED))
+
 
 #The following creates a df that shows that all major outliers for
 #days_employed are pensioners, and a few unemplyed
@@ -103,8 +104,49 @@ View(outliers_emp)
 
 
 #plot something
-# ggplot(results, aes(x = as.factor(results$TARGET), y = results$MAX_DAYS_LATE_BUREAU)) +
-#   geom_point()
+ggplot(results_train, aes(x = TARGET)) +
+  geom_bar(stat = "count")
+ggplot(results_train, aes(x = LOAN_TYPE )) +
+  geom_bar(stat = "count")
+ggplot(results_train, aes(x = as.integer(AGE))) +
+  geom_bar(stat = "count")
+ggplot(results_train, aes(x = GENDER)) +
+  geom_bar(stat = "count")
+ggplot(results_train, aes(x = OWNS_CAR)) +
+  geom_bar(stat = "count")
+ggplot(results_train, aes(x = AGE_OF_CAR)) +
+  geom_bar(stat = "count")
+ggplot(results_train, aes(x = OWNS_REALTY)) +
+  geom_bar(stat = "count")
+ggplot(results_train, aes(x = CHILDREN)) +
+  geom_bar(stat = "count")
+ggplot(results_train, aes(x = TOTAL_INCOME)) +
+  geom_bar(stat = "count")
+ggplot(results_train, aes(x = LOAN_AMOUNT)) +
+  geom_bar(stat = "count")
+ggplot(results_train, aes(x = PAYMENT_AMOUNT)) +
+  geom_bar(stat = "count")
+ggplot(results_train, aes(x = PURCHASE_PRICE_OF_GOODS)) +
+  geom_bar(stat = "count")
+ggplot(results_train, aes(x = RATIO_LOAN_TO_ANNUITY)) +
+  geom_bar(stat = "count")
+ggplot(results_train, aes(x = INCOME_TYPE)) +
+  geom_bar(stat = "count")
+ggplot(results_train, aes(x = EDUCATION)) +
+  geom_bar(stat = "count")
+ggplot(results_train, aes(x = MARITAL_STATUS)) +
+  geom_bar(stat = "count")
+ggplot(results_train, aes(x = HOUSING_STATUS)) +
+  geom_bar(stat = "count")
+ggplot(results_train, aes(x = YEARS_AT_CURRENT_JOB)) +
+  geom_bar(stat = "count")
+ggplot(results_train, aes(x = EMPLOYER_TYPE)) +
+  geom_bar(stat = "count")
+ggplot(results_train, aes(x = YEARS_SINCE_GETTING_IDENTITY_DOCUMENT)) +
+  geom_bar(stat = "count")
+ggplot(results_train, aes(x = REGION_AND_CITY_RATING)) +
+  geom_bar(stat = "count")
+
 
 #results <- add_column(summarise(bureau_grouped_ID, max(CREDIT_DAY_OVERDUE)))
 
