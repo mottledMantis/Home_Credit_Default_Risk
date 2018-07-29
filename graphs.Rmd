@@ -1,0 +1,445 @@
+---
+title: "Data Graphs"
+author: "James Matheson"
+date: "July 19, 2018"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(GGally)
+library(gridExtra)
+results_train <- read_csv("results_train.csv")
+```
+
+```{r correlation chart, echo=FALSE}
+ggcorr(results_train[, ], nbreaks = 4, palette = "RdGy", label = TRUE, label_size = 3, label_color = "white")
+```
+
+
+##Loan Type and Loan Type v. Target
+
+```{r loan_type, echo=FALSE}
+grid.arrange(ggplot(results_train, aes(x = LOAN_TYPE, fill = LOAN_TYPE)) +
+               geom_bar(stat = "count"),
+             ggplot(results_train, aes(LOAN_TYPE, TARGET, fill = LOAN_TYPE)) +
+               geom_bar(position = "dodge", stat = "summary", fun.y = "mean")
+             )
+count(results_train, LOAN_TYPE)
+```
+
+## Age and Age v. Target
+
+```{r age, echo=FALSE}
+grid.arrange(ggplot(results_train, aes(x = AGE)) +
+               geom_histogram(stat = "bin", bins = 20, col = "grey", fill = "blue"),
+             ggplot(results_train, aes(factor(TARGET), AGE, fill = AGE)) +
+               geom_jitter( alpha = .05)  +
+               geom_boxplot( alpha = .5, color = "blue") +
+               stat_summary(fun.y = "mean", geom = "point", color = "red", shape = 8, size = 4)
+             )
+summary(results_train$AGE)
+```
+
+## Gender and Gender v. Target
+
+```{r gender, echo=FALSE}
+grid.arrange(ggplot(results_train, aes(x = GENDER, fill = GENDER)) +
+               geom_bar(stat = "count"),
+             ggplot(results_train, aes(GENDER, TARGET, fill = GENDER)) +
+               geom_bar(position = "dodge", stat = "summary", fun.y = "mean")
+             )
+count(results_train, GENDER)
+```
+
+## Owns a car? and Owns Car v. Target
+
+```{r owns_car, echo=FALSE}
+grid.arrange(ggplot(results_train, aes(x = OWNS_CAR, fill = OWNS_CAR)) +
+               geom_bar(stat = "count"),
+             ggplot(results_train, aes(OWNS_CAR, TARGET, fill = OWNS_CAR)) +
+               geom_bar(position = "dodge", stat = "summary", fun.y = "mean")
+             )
+count(results_train, OWNS_CAR)
+```
+
+## Age of car and Age of Car v. Target
+
+```{r age_of_car, echo=FALSE}
+grid.arrange(ggplot(results_train, aes(x = AGE_OF_CAR)) +
+               geom_histogram(stat = "bin", binwidth = 2.5, col = "grey", fill = "blue"),
+             ggplot(results_train, aes(factor(TARGET), AGE_OF_CAR)) +
+               geom_jitter( alpha = .05)  +
+               geom_boxplot( alpha = .5, color = "blue") +
+               stat_summary(fun.y = "mean", geom = "point", color = "red", shape = 8, size = 4)
+)
+summary(results_train$AGE_OF_CAR)
+count(results_train, factor(AGE_OF_CAR))
+```
+##NEED TO FIX OUTLIERS AND DETERMINE THE CAUSE OF THE BLIP AROUND 62
+
+## Owns Real Estate? and Owns RE v. Target
+
+```{r owns_realty, echo=FALSE}
+grid.arrange(ggplot(results_train, aes(x = OWNS_REALTY, fill = OWNS_REALTY)) +
+               geom_bar(stat = "count"),
+             ggplot(results_train, aes(OWNS_REALTY, TARGET, fill = OWNS_REALTY)) +
+               geom_bar(position = "dodge", stat = "summary", fun.y = "mean")
+             )
+count(results_train, OWNS_REALTY)
+```
+
+## Number of Children and Number of Children v. Target
+
+```{r children, echo=FALSE}
+grid.arrange(ggplot(results_train, aes(x = factor(CHILDREN), fill = CHILDREN)) +
+               geom_bar(stat = "count"),
+             ggplot(results_train, aes(factor(CHILDREN), TARGET, fill = CHILDREN)) +
+               geom_bar(position = "dodge", stat = "summary", fun.y = "mean")
+             )
+count(results_train, CHILDREN)
+```
+
+## Total Income and Total Income v. Target
+
+```{r total_income, echo=FALSE}
+grid.arrange(ggplot(results_train, aes(x = TOTAL_INCOME)) +
+  geom_histogram(bins = 20, col = "grey", fill = "blue") +
+    xlim(0, 500000),
+  # scale_y_log10()
+  ggplot(results_train, aes(factor(TARGET), TOTAL_INCOME)) +
+               geom_jitter( alpha = .05)  +
+               geom_boxplot( alpha = .5, color = "blue") +
+               stat_summary(fun.y = "mean", geom = "point", color = "red", shape = 8, size = 4) +
+    ylim(0, 500000)
+)
+summary(results_train$TOTAL_INCOME)
+```
+
+<!-- ## Total Income and Total Income v. Target -->
+
+<!-- ```{r echo=FALSE} -->
+<!-- ggplot(results_train, aes(x = TOTAL_INCOME)) + -->
+<!--   geom_histogram(bins = 20) + -->
+<!--   scale_x_log10(breaks=c(1e+5,1e+6)) + -->
+<!--   xlim(0, 1e+6) -->
+<!-- summary(results_train$TOTAL_INCOME) -->
+<!-- ``` -->
+
+## Amount of Loan and Amount of Loan v. Target
+
+```{r loan_amount, echo=FALSE}
+grid.arrange(ggplot(results_train, aes(x = LOAN_AMOUNT)) +
+  geom_histogram(stat = "bin", bins = 20, col = "grey", fill = "blue"),
+  ggplot(results_train, aes(factor(TARGET), LOAN_AMOUNT)) +
+               geom_jitter( alpha = .05)  +
+               geom_boxplot( alpha = .5, color = "blue") +
+               stat_summary(fun.y = "mean", geom = "point", color = "red", shape = 8, size = 4)
+)
+summary(results_train$LOAN_AMOUNT)
+```
+
+## Monthly Payment and Monthly Payment v. Target
+
+```{r annuity_amount, echo=FALSE}
+grid.arrange(ggplot(results_train, aes(x =  ANNUITY_AMOUNT)) +
+               geom_histogram(stat = "bin", col = "grey", fill = "blue") +
+               xlim(0, 1e+5),
+             ggplot(results_train, aes(factor(TARGET), ANNUITY_AMOUNT)) +
+               ylim(0, 1e+5) +
+               geom_jitter( alpha = .05)  +
+               geom_boxplot( alpha = .5, color = "blue") +
+               stat_summary(fun.y = "mean", geom = "point", color = "red", shape = 8, size = 4)
+)
+  
+summary(results_train$ANNUITY_AMOUNT)
+```
+
+## Price of Goods Purchcased with the Loan and Price v. Target
+
+```{r purchase_price_of_goods, echo=FALSE}
+grid.arrange(ggplot(results_train, aes(x = PURCHASE_PRICE_OF_GOODS)) +
+               geom_histogram(stat = "bin", col = "grey", fill = "blue"),
+             ggplot(results_train, aes(factor(TARGET), PURCHASE_PRICE_OF_GOODS)) +
+               geom_jitter( alpha = .05)  +
+               geom_boxplot( alpha = .5, color = "blue") +
+               stat_summary(fun.y = "mean", geom = "point", color = "red", shape = 8, size = 4)
+)
+summary(results_train$PURCHASE_PRICE_OF_GOODS)
+```
+
+## Ratio of Loan to Payment Amount and Ratio v. Target
+
+```{r ratio_loan_to_annuity, echo=FALSE}
+grid.arrange(ggplot(results_train, aes(x = RATIO_LOAN_TO_ANNUITY)) +
+               geom_histogram(col = "grey", fill = "blue"),
+             ggplot(results_train, aes(factor(TARGET), RATIO_LOAN_TO_ANNUITY)) +
+               geom_jitter( alpha = .05)  +
+               geom_boxplot( alpha = .5, color = "blue") +
+               stat_summary(fun.y = "mean", geom = "point", color = "red", shape = 8, size = 4)
+)
+summary(results_train$RATIO_LOAN_TO_ANNUITY)
+```
+
+## Type of Income and Type of Income v. Target
+
+```{r income_type, echo=FALSE}
+grid.arrange(ggplot(results_train, aes(x = INCOME_TYPE, fill = INCOME_TYPE)) +
+  geom_bar(stat = "count", show.legend = FALSE) +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1)),
+  ggplot(results_train, aes(INCOME_TYPE, TARGET, fill = INCOME_TYPE)) +
+    geom_bar(position = "dodge", stat = "summary", fun.y = "mean", show.legend = FALSE) +
+    theme(axis.text.x = element_text(angle = 90))
+  )
+count(results_train, INCOME_TYPE)
+```
+
+## Education Level and Education Level v. Target
+
+```{r education, echo=FALSE}
+grid.arrange(ggplot(results_train, aes(x = EDUCATION, fill = EDUCATION)) +
+               geom_bar(stat = "count") +
+               theme(axis.text.x = element_text(angle = 90, hjust = 1)),
+             ggplot(results_train, aes(EDUCATION, TARGET, fill = EDUCATION)) +
+               geom_bar(position = "dodge", stat = "summary", fun.y = "mean") +
+               theme(axis.text.x = element_text(angle = 90, hjust = 1))
+      )
+count(results_train, EDUCATION)
+```
+
+## Marital Status and Marital Status v. Target
+
+```{r marital_status, echo=FALSE}
+grid.arrange(ggplot(results_train, aes(x = MARITAL_STATUS, fill = MARITAL_STATUS)) +
+               geom_bar(stat = "count"),
+             ggplot(results_train, aes(MARITAL_STATUS, TARGET, fill = MARITAL_STATUS)) +
+               geom_bar(position = "dodge", stat = "summary", fun.y = "mean")
+)
+count(results_train, MARITAL_STATUS)
+```
+
+## Housing Status and Housing Status v. Target
+
+```{r housing_status, echo=FALSE}
+grid.arrange(ggplot(results_train, aes(x = HOUSING_STATUS, fill = HOUSING_STATUS)) +
+               geom_bar(stat = "count") +
+               theme(axis.text.x = element_text(angle = 90, hjust = 1)),
+             ggplot(results_train, aes(HOUSING_STATUS, TARGET, fill = HOUSING_STATUS)) +
+               geom_bar(position = "dodge", stat = "summary", fun.y = "mean") +
+               theme(axis.text.x = element_text(angle = 90, hjust = 1))
+)
+count(results_train, HOUSING_STATUS)
+```
+
+## Years at Current Job and Years v. Target
+
+```{r years_at_curernt_job, echo=FALSE}
+grid.arrange(ggplot(results_train, aes(x = YEARS_AT_CURRENT_JOB)) +
+  geom_histogram(binwidth = 2, col = "grey", fill = "blue") +
+  xlim(0, 50),
+  ggplot(results_train, aes(factor(TARGET), YEARS_AT_CURRENT_JOB)) +
+    ylim(0, 50) +
+               geom_jitter( alpha = .05)  +
+               geom_boxplot( alpha = .5, color = "blue") +
+               stat_summary(fun.y = "mean", geom = "point", color = "red", shape = 8, size = 4)
+)
+summary(results_train$YEARS_AT_CURRENT_JOB)
+```
+
+## Employer Organization Type and Type v. Target
+
+```{r employer_type, echo=FALSE}
+grid.arrange(ggplot(results_train, aes(x = EMPLOYER_TYPE, fill = EMPLOYER_TYPE)) +
+  geom_bar(stat = "count", show.legend = FALSE) +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1)),
+  ggplot(results_train, aes(EMPLOYER_TYPE, TARGET, fill = EMPLOYER_TYPE)) +
+    geom_bar(position = "dodge", stat = "summary", fun.y = "mean", show.legend = FALSE) +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1))
+)
+count(results_train, EMPLOYER_TYPE)
+```
+
+## Years Since Getting Current Identity Documnent and Years v. Target
+
+```{r years_since_doc, echo=FALSE}
+grid.arrange(ggplot(results_train, aes(x = YEARS_SINCE_GETTING_IDENTITY_DOCUMENT)) +
+               geom_histogram(col = "grey", fill = "blue"),
+             ggplot(results_train, aes(factor(TARGET), YEARS_SINCE_GETTING_IDENTITY_DOCUMENT)) +
+               geom_jitter( alpha = .05)  +
+               geom_boxplot( alpha = .5, color = "blue") +
+               stat_summary(fun.y = "mean", geom = "point", color = "red", shape = 8, size = 4)
+)
+summary(results_train$YEARS_SINCE_GETTING_IDENTITY_DOCUMENT)
+```
+
+## Rating of Region and Rating v. Target
+
+```{r region_city_rating, echo=FALSE}
+grid.arrange(ggplot(results_train, aes(x = REGION_AND_CITY_RATING, fill = factor(REGION_AND_CITY_RATING))) +
+  geom_bar(stat = "count"),
+  ggplot(results_train, aes(factor(REGION_AND_CITY_RATING), TARGET, fill = factor(REGION_AND_CITY_RATING))) +
+    geom_bar(position = "dodge", stat = "summary", fun.y = "mean")
+  )
+count(results_train, REGION_AND_CITY_RATING)
+```
+
+
+
+<!-- ## Target -->
+
+<!-- ```{r echo=FALSE} -->
+<!-- ggplot(results_train, aes(x = factor(TARGET))) + -->
+<!--   geom_bar(stat = "count") -->
+<!-- ``` -->
+
+
+<!-- ## Loan Type -->
+
+<!-- ```{r echo=FALSE} -->
+<!-- ggplot(results_train, aes(x = LOAN_TYPE )) + -->
+<!--   geom_bar(stat = "count") -->
+<!-- ``` -->
+
+
+<!-- ## Age -->
+
+<!-- # ```{r echo=FALSE} -->
+<!-- # ggplot(results_train, aes(x = AGE)) + -->
+<!-- #   geom_histogram(stat = "bin", bins = 20) -->
+<!-- # ``` -->
+
+<!-- ## Gender -->
+
+<!-- ```{r echo=FALSE} -->
+<!-- ggplot(results_train, aes(x = GENDER)) + -->
+<!--   geom_bar(stat = "count") -->
+<!-- ``` -->
+
+<!-- ## Owns a car? -->
+
+<!-- ```{r echo=FALSE} -->
+<!-- ggplot(results_train, aes(x = OWNS_CAR)) + -->
+<!--   geom_bar(stat = "count") -->
+<!-- ``` -->
+
+<!-- ## Age of car -->
+
+<!-- ```{r echo=FALSE} -->
+<!-- ggplot(results_train, aes(x = AGE_OF_CAR)) + -->
+<!--   geom_histogram(stat = "bin", binwidth = 2.5) -->
+<!-- ``` -->
+
+<!-- ## Owns Real Estate? -->
+
+<!-- ```{r echo=FALSE} -->
+<!-- ggplot(results_train, aes(x = OWNS_REALTY)) + -->
+<!--   geom_bar(stat = "count") -->
+<!-- ``` -->
+
+<!-- ## Number of Children -->
+
+<!-- ```{r echo=FALSE} -->
+<!-- ggplot(results_train, aes(x = factor(CHILDREN))) + -->
+<!--   geom_bar(stat = "count") -->
+<!-- ``` -->
+
+<!-- ## Total Income -->
+
+<!-- ```{r echo=FALSE} -->
+<!-- ggplot(results_train, aes(x = TOTAL_INCOME)) + -->
+<!--   geom_histogram(bins = 20) + -->
+<!--   scale_x_log10(breaks=c(1e+5,1e+6)) + -->
+<!--   xlim(0, 1e+6) -->
+<!-- ``` -->
+
+<!-- ## Amount of Loan -->
+
+<!-- ```{r echo=FALSE} -->
+<!-- ggplot(results_train, aes(x = LOAN_AMOUNT)) + -->
+<!--   geom_histogram(stat = "bin") -->
+<!-- summary(results_train$LOAN_AMOUNT) -->
+<!-- ``` -->
+
+<!-- ## Monthly Payment -->
+
+<!-- ```{r echo=FALSE} -->
+<!-- ggplot(results_train, aes(x =  ANNUITY_AMOUNT)) + -->
+<!--   geom_histogram(stat = "bin") -->
+<!-- ``` -->
+
+<!-- ## Price of Goods Purchcased with the Loan -->
+
+<!-- ```{r echo=FALSE} -->
+<!-- ggplot(results_train, aes(x = PURCHASE_PRICE_OF_GOODS)) + -->
+<!--   geom_histogram(stat = "bin") -->
+<!-- ``` -->
+
+<!-- ## Ratio of Loan to Payment Amount -->
+
+<!-- ```{r echo=FALSE} -->
+<!-- ggplot(results_train, aes(x = RATIO_LOAN_TO_ANNUITY)) + -->
+<!--   geom_histogram() -->
+<!-- ``` -->
+
+<!-- ## Type of Income -->
+
+<!-- ```{r echo=FALSE} -->
+<!-- ggplot(results_train, aes(x = INCOME_TYPE)) + -->
+<!--   geom_bar(stat = "count") + -->
+<!-- theme(axis.text.x = element_text(angle = 90, hjust = 1)) -->
+<!-- ``` -->
+
+<!-- ## Education Level -->
+
+<!-- ```{r echo=FALSE} -->
+<!-- ggplot(results_train, aes(x = EDUCATION)) + -->
+<!--   geom_bar(stat = "count") -->
+<!-- ``` -->
+
+<!-- ## Marital Status -->
+
+<!-- ```{r echo=FALSE} -->
+<!-- ggplot(results_train, aes(x = MARITAL_STATUS)) + -->
+<!--   geom_bar(stat = "count") -->
+<!-- ``` -->
+
+<!-- ## Housing Status -->
+
+<!-- ```{r echo=FALSE} -->
+<!-- ggplot(results_train, aes(x = HOUSING_STATUS)) + -->
+<!--   geom_bar(stat = "count") -->
+<!-- ``` -->
+
+<!-- ## Years at Current Job -->
+
+<!-- ```{r echo=FALSE} -->
+<!-- ggplot(results_train, aes(x = YEARS_AT_CURRENT_JOB)) + -->
+<!--   geom_histogram(binwidth = 2) -->
+<!-- ``` -->
+
+<!-- ## Employer Organization Type -->
+
+<!-- ```{r echo=FALSE} -->
+<!-- ggplot(results_train, aes(x = EMPLOYER_TYPE)) + -->
+<!--   geom_bar(stat = "count") -->
+<!-- ``` -->
+
+<!-- ## Years Since Getting Current Identity Documnent -->
+
+<!-- ```{r echo=FALSE} -->
+<!-- ggplot(results_train, aes(x = YEARS_SINCE_GETTING_IDENTITY_DOCUMENT)) + -->
+<!--   geom_histogram() -->
+<!-- ``` -->
+
+<!-- ## Rating of Region -->
+
+<!-- ```{r echo=FALSE} -->
+<!-- ggplot(results_train, aes(x = REGION_AND_CITY_RATING)) + -->
+<!--   geom_bar(stat = "count") -->
+<!-- ``` -->
+
+

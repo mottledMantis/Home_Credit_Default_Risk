@@ -1,5 +1,7 @@
 library(tidyverse)
 library(fastDummies)
+library(GGally)
+library(gridExtra)
 
 #at visualization time, make histogram for numerical features
 #bar plot for the categorical data
@@ -103,35 +105,53 @@ outliers_emp <- data.frame(filter(application_all, DAYS_EMPLOYED > 10000))
 View(outliers_emp)
 
 
+#grids side by side
+grid.arrange(ggplot(results_train, aes(x = LOAN_TYPE )) +
+               geom_bar(stat = "count"),
+             ggplot(results_train) + 
+               geom_bar(aes(LOAN_TYPE, TARGET), 
+                        position = "dodge", stat = "summary", fun.y = "mean")
+)
+summary(results_train, LOAN_TYPE)
+
+
 #plot something
-ggplot(results_train, aes(x = TARGET)) +
+ggplot(results_train, aes(x = factor(TARGET))) +
   geom_bar(stat = "count")
 ggplot(results_train, aes(x = LOAN_TYPE )) +
   geom_bar(stat = "count")
-ggplot(results_train, aes(x = as.integer(AGE))) +
-  geom_bar(stat = "count")
+ggplot(results_train, aes(x = AGE)) +
+  geom_histogram(stat = "bin", bins = 20)
 ggplot(results_train, aes(x = GENDER)) +
   geom_bar(stat = "count")
 ggplot(results_train, aes(x = OWNS_CAR)) +
   geom_bar(stat = "count")
 ggplot(results_train, aes(x = AGE_OF_CAR)) +
-  geom_bar(stat = "count")
+  geom_histogram(stat = "bin", binwidth = 2.5)
 ggplot(results_train, aes(x = OWNS_REALTY)) +
   geom_bar(stat = "count")
-ggplot(results_train, aes(x = CHILDREN)) +
+ggplot(results_train, aes(x = factor(CHILDREN))) +
   geom_bar(stat = "count")
 ggplot(results_train, aes(x = TOTAL_INCOME)) +
-  geom_bar(stat = "count")
+  scale_x_log10(breaks=c(1e+5,1e+6)) +
+  xlim(0, 1e+6) +
+  geom_histogram(bins = 20)
+# add limit
 ggplot(results_train, aes(x = LOAN_AMOUNT)) +
-  geom_bar(stat = "count")
+  geom_histogram(stat = "bin")
+
 ggplot(results_train, aes(x = PAYMENT_AMOUNT)) +
-  geom_bar(stat = "count")
+  geom_histogram(stat = "bin")
+
+# add limit
 ggplot(results_train, aes(x = PURCHASE_PRICE_OF_GOODS)) +
-  geom_bar(stat = "count")
+  geom_histogram(stat = "bin")
 ggplot(results_train, aes(x = RATIO_LOAN_TO_ANNUITY)) +
-  geom_bar(stat = "count")
+  geom_histogram()
 ggplot(results_train, aes(x = INCOME_TYPE)) +
-  geom_bar(stat = "count")
+  geom_bar(stat = "count") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+# ADD OTHER CATEGORY FOR LOW SAMPLES
 ggplot(results_train, aes(x = EDUCATION)) +
   geom_bar(stat = "count")
 ggplot(results_train, aes(x = MARITAL_STATUS)) +
@@ -139,11 +159,13 @@ ggplot(results_train, aes(x = MARITAL_STATUS)) +
 ggplot(results_train, aes(x = HOUSING_STATUS)) +
   geom_bar(stat = "count")
 ggplot(results_train, aes(x = YEARS_AT_CURRENT_JOB)) +
-  geom_bar(stat = "count")
+  geom_histogram(binwidth = 2)
+#MAKE THE OUTLIERS = 0
 ggplot(results_train, aes(x = EMPLOYER_TYPE)) +
   geom_bar(stat = "count")
+#SORT ACCORDING TO NUMBER OF SAMPLES, AND THEN GROUP LOW-OCCURRING CATEGORIES
 ggplot(results_train, aes(x = YEARS_SINCE_GETTING_IDENTITY_DOCUMENT)) +
-  geom_bar(stat = "count")
+  geom_histogram()
 ggplot(results_train, aes(x = REGION_AND_CITY_RATING)) +
   geom_bar(stat = "count")
 
@@ -152,4 +174,48 @@ ggplot(results_train, aes(x = REGION_AND_CITY_RATING)) +
 
 # finalData<-subset(data,!(is.na(data["mmul"]) | is.na(data["rnor"]))) - use to remove rows with no TARGET value
 # use merge to combine the test and train sets?
+ggplot(results_train, aes(factor(TARGET),
+           AGE)) +
+  geom_jitter( alpha = .05)  +
+  geom_boxplot( alpha = .5, color = "blue")+
+  stat_summary(fun.y = "mean",
+               geom = "point",
+               color = "red",
+               shape = 8,
+               size = 4)
 
+ggplot(results_train) + 
+  geom_bar(aes(GENDER, TARGET), 
+           position = "dodge", stat = "summary", fun.y = "mean")
+# to put 2 plots nect to each other
+grid.arrange( ggplot(aes(x=alcohol),
+                     data = red.wine) +
+                geom_histogram( bins = 30) ,
+              ggplot(aes(x=1, y=alcohol),
+                     data = red.wine) +
+                geom_boxplot( )  , nrow =1)
+
+ggcorr(results_train[,], nbreaks = 4, palette = "RdGy", label = TRUE, label_size = 3, label_color = "white")
+
+pct <- function(out) {
+  out / nrow(results_train)
+}
+results_train %>%
+  group_by(INCOME_TYPE) %>%
+  count(INCOME_TYPE)
+
+results_train %>%
+  group_by(INCOME_TYPE) %>%
+  tally(TARGET == 0)
+temp$TARGET_PCT <- temp$n / nrow(results_train) * 100
+temp
+
+
+temp <- results_train %>%
+  group_by(INCOME_TYPE, TARGET) %>%
+  # count(LOAN_TYPE) %>% 
+  count(TARGET)
+temp$TARGET_PCT <- temp$n / nrow(results_train) * 100
+temp
+count(results_train, LOAN_TYPE)
+tally(results_train, TARGET == 1) / nrow(results_train)
