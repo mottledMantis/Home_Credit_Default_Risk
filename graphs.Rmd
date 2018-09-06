@@ -145,18 +145,18 @@ summary(results_train$LOAN_AMOUNT)
 
 ## Monthly Payment and Monthly Payment v. Target
 
-```{r annuity_amount, echo=FALSE}
-grid.arrange(ggplot(results_train, aes(x =  ANNUITY_AMOUNT)) +
+```{r payment_amount, echo=FALSE}
+grid.arrange(ggplot(results_train, aes(x =  PAYMENT_AMOUNT)) +
                geom_histogram(stat = "bin", col = "grey", fill = "blue") +
                xlim(0, 1e+5),
-             ggplot(results_train, aes(factor(TARGET), ANNUITY_AMOUNT)) +
+             ggplot(results_train, aes(factor(TARGET), PAYMENT_AMOUNT)) +
                ylim(0, 1e+5) +
                geom_jitter( alpha = .05)  +
                geom_boxplot( alpha = .5, color = "blue") +
                stat_summary(fun.y = "mean", geom = "point", color = "red", shape = 8, size = 4)
 )
   
-summary(results_train$ANNUITY_AMOUNT)
+summary(results_train$PAYMENT_AMOUNT)
 ```
 
 ## Price of Goods Purchcased with the Loan and Price v. Target
