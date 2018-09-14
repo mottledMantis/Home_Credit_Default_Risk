@@ -69,19 +69,23 @@ results <- data.frame("SK_ID_CURR" = application_all$SK_ID_CURR,
                       "REGION_AND_CITY_RATING" = as.factor(application_all$REGION_RATING_CLIENT_W_CITY)
                       )
 
+# replace low-count "XNA" factor from GENDER with NA and make factor
+results$GENDER <- gsub("XNA", NA, results$GENDER)
+results$GENDER <- as.factor(results$GENDER)
+
 #add the bureau infomation to the results df
 results <- merge(results, bureau_grouped_ID, by.x = 1, by.y = 1, all = TRUE)
 
 
 #group chilren amounts >4
-results$CHILDREN <- as.factor(ifelse(results$CHILDREN>4, '5+', results$CHILDREN))
+results$CHILDREN <- as.factor(ifelse(results$CHILDREN>4, '5Plus', results$CHILDREN))
 
 #copy income type to a variable for grouping and remove the original
 
 results$INCOME_TYPE_GROUPED <- results$INCOME_TYPE
 results$INCOME_TYPE <- NULL
 
-# combine factor levels to combine low counts
+# combine INCOME_TYPE factor levels for low counts
 results$INCOME_TYPE_GROUPED <- as.factor(
   ifelse(results$INCOME_TYPE_GROUPED %in% c('Businessman','Maternity leave', 'Student', 'Unemployed'), 'Other', as.character(results$INCOME_TYPE_GROUPED)
   )
@@ -89,6 +93,7 @@ results$INCOME_TYPE_GROUPED <- as.factor(
 
 # All original levels:
 # "Advertising", "Agriculture", "Bank", "Business Entity Type 1", "Business Entity Type 2", "Business Entity Type 3", "Cleaning", "Construction", "Culture", "Electricity", "Emergency", "Government", "Hotel", "Housing", "Industry: type 1", "Industry: type 10", "Industry: type 11", "Industry: type 12", "Industry: type 13", "Industry: type 2", "Industry: type 3", "Industry: type 4", "Industry: type 5", "Industry: type 6", "Industry: type 7", "Industry: type 8", "Industry: type 9", "Insurance", "Kindergarten", "Legal Services", "Medicine", "Military", "Mobile", "Postal", "Realtor", "Religion", "Restaurant", "School", "Security", "Security Ministries", "Self-employed", "Services", "Telecom", "Trade: type 1", "Trade: type 2", "Trade: type 3", "Trade: type 4", "Trade: type 5", "Trade: type 6", "Trade: type 7", "Transport: type 1", "Transport: type 2", "Transport: type 3", "Transport: type 4", "University", "XNA" 
+
 
 #group employer type into fewer categories
 results$EMPLOYER_TYPE_GROUPED <- results$EMPLOYER_TYPE
@@ -105,6 +110,28 @@ results$EMPLOYER_TYPE_GROUPED <- as.factor(
 
 results$EMPLOYER_TYPE_GROUPED <- as.factor(
   ifelse(results$EMPLOYER_TYPE_GROUPED %in% c("Trade: type 1", "Trade: type 2", "Trade: type 3", "Trade: type 4", "Trade: type 5", "Trade: type 6", "Trade: type 7"), 'Trade', as.character(results$EMPLOYER_TYPE_GROUPED)
+  )
+)
+
+results$EMPLOYER_TYPE_GROUPED <- as.factor(
+  ifelse(results$EMPLOYER_TYPE_GROUPED %in% c("Advertising", "Security", "Security Ministries", "Cleaning", "Culture", "Emergency", "Insurance", "Legal Services", "Mobile", "Realtor", "Religion", "Telecom", "Services", "Hotel", "Restaurant"), 'Service', as.character(results$EMPLOYER_TYPE_GROUPED)
+  )
+)
+
+results$EMPLOYER_TYPE_GROUPED <- as.factor(
+  ifelse(results$EMPLOYER_TYPE_GROUPED %in% c("Kindergarten", "School", "University"), 'Education', as.character(results$EMPLOYER_TYPE_GROUPED)
+  )
+)
+
+
+results$EMPLOYER_TYPE_GROUPED <- as.factor(
+  ifelse(results$EMPLOYER_TYPE_GROUPED %in% c("Postal", "Police", "Military", "Government"), 'Govt Services', as.character(results$EMPLOYER_TYPE_GROUPED)
+  )
+)
+
+
+results$EMPLOYER_TYPE_GROUPED <- as.factor(
+  ifelse(results$EMPLOYER_TYPE_GROUPED %in% c("Construction", "Housing"), 'Housing', as.character(results$EMPLOYER_TYPE_GROUPED)
   )
 )
 
@@ -144,18 +171,20 @@ results$'(Intercept)' <- NULL
 
 #remove original columns
 
-# results$CHILDREN <- NULL
-# results$REGION_AND_CITY_RATING <- NULL
-# results$EMPLOYER_TYPE_GROUPED <- NULL
-# results$HOUSING_STATUS <- NULL
-# results$INCOME_TYPE <- NULL
-# results$LOAN_TYPE <- NULL
+results$CHILDREN <- NULL
+results$REGION_AND_CITY_RATING <- NULL
+results$EMPLOYER_TYPE_GROUPED <- NULL
+results$HOUSING_STATUS <- NULL
+results$INCOME_TYPE <- NULL
+results$LOAN_TYPE <- NULL
 
 #clean the column names of the dummy columns
 colnames(results) <- gsub("results\\$+", "", colnames(results))
+colnames(results) <- gsub("EMPLOYER_TYPE_GROUPEDSelf-employed", "EMPLOYER_TYPE_GROUPEDSelf_employed", colnames(results))
 
 
-
+#replace AGE_OF_CAR NA's with 0
+results$AGE_OF_CAR[is.na(results$AGE_OF_CAR)] <- as.numeric(0)
 
 # create results_train and results_test by removing samples with TARGET == NA
 results_train <- filter(results, is.na(results$TARGET) == FALSE)
@@ -169,6 +198,50 @@ write_csv(results_train, "results_train.csv")
 write_csv(results_test, "results_test.csv")
 
 
+
+#FIX GENDER AND IF DUMMY INCLUDE ONLY ONE
+#FIX EMPLOYER
+
+# CREATE TRAIN AND TEST SETS FROM results_train FOR MODEL CREATION
+## here's the library that includes sample.split function
+library(caTools)
+
+##shuffle the rows into a temporary df to eliminate any ordering bias
+## can use set.seed(number) if you want to make the split reproducible
+results_train_shuffle <- results_train[sample(1:nrow(results_train)), ] 
+
+## split the shuffled data 80/20
+split <- sample.split(results_train_shuffle$TARGET, SplitRatio = 0.80) 
+
+## make new dfs from the splitted data
+results_train_Train <- subset(results_train_shuffle, split == TRUE)
+results_train_Test <- subset(results_train_shuffle, split == FALSE)
+
+## remove the temporary shuffle df
+results_train_shuffle <- NULL
+
+#write to csv
+write_csv(results_train_Train, "results_train_Train.csv")
+write_csv(results_train_Test, "results_train_Test.csv")
+
+results_train_Train$SK_ID_CURR <- NULL
+
+#Create logistic model
+Log.mod <- glm(TARGET ~ AGE + GENDER + OWNS_CAR + AGE_OF_CAR + OWNS_REALTY +
+                 TOTAL_INCOME + LOAN_AMOUNT + PAYMENT_AMOUNT + PURCHASE_PRICE_OF_GOODS +
+                 RATIO_LOAN_TO_ANNUITY + EDUCATION +  MARITAL_STATUS +
+                 YEARS_AT_CURRENT_JOB + YEARS_SINCE_GETTING_IDENTITY_DOCUMENT +
+                 MAX_DAYS_LATE_BUREAU + INCOME_TYPE_GROUPED + CHILDREN1 + CHILDREN2 +
+                 CHILDREN3 +  CHILDREN4 + CHILDREN5Plus + REGION_AND_CITY_RATING1 +
+                 REGION_AND_CITY_RATING2 + REGION_AND_CITY_RATING3 +
+                 EMPLOYER_TYPE_GROUPEDBank + EMPLOYER_TYPE_GROUPEDBusiness_Entity +
+                 EMPLOYER_TYPE_GROUPEDEducation + EMPLOYER_TYPE_GROUPEDElectricity +
+                 EMPLOYER_TYPE_GROUPEDGovt_Services + EMPLOYER_TYPE_GROUPEDHousing +
+                 EMPLOYER_TYPE_GROUPEDIndustry + EMPLOYER_TYPE_GROUPEDMedicine +
+                 EMPLOYER_TYPE_GROUPEDOther + EMPLOYER_TYPE_GROUPEDSelf_employed +
+                 EMPLOYER_TYPE_GROUPEDService, data = results_train_Train,
+               family = binomial)
+summary(Log.mod)
 
 ##OTHER FUNCTIONS
 
