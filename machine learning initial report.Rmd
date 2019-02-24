@@ -1,0 +1,36 @@
+---
+title: "Plan for Machine Learning"
+author: "James Matheson"
+date: "February 24, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Plan for Machine Learning
+The goal of my Captstone project is to take a set of historical data provided by Home Credit, a company which makes small loans individuals. Becuase of the risk of incurring a loss should a debtor default on - or otherwise have trouble repaying a loan - I will use Machine Learning on historical data, and test its ability to predict the likliehood of default.
+
+# Data
+I will take the clean version of my data set and divide it into two new sets. 80% of the data will be used to train the models, and 20% of the data will then be used to test the models.
+
+The dependent variable is labelled "TARGET." A value of "1" for a sample indicates that the sample debtor had trouble repaying a loan. A value of "0" indicates that the sample debtor was able to repay the loan without issue.
+
+# Models
+Because the dependent varialbe, "TARGET," has only two possible values (0 and 1), I will use models that reply on logistic regression. Further, since the data set contains meaningful category labels, I will use Supervised learning methods.
+
+I will test and use the following models and compare their results in order to determine which is most effective for this particular set of data:
+1) for comparison purposes I will run a Generalized Linear Model, in which the TARGET is computed as a probability;
+2) Naive Bayes
+3) K Nearest Neighbor
+4) Random Forest
+5) GLBoost
+
+N.B.: I had originally also planned to run a Support Vector Machine, but the exessive training time  made this unworkable. After a week running, the SVM trainer was still not finished.
+
+These models will all be run using the Caret package to assist with parameter tuning.
+
+# Performance Evaluation
+Area Under ROC Curve will be used as the primary statitic for determining the performance of each model. Confusion Matrices will be generated and provided as well.
+
