@@ -1,0 +1,131 @@
+---
+title: "Data Story"
+author: "James Matheson"
+date: "February 24, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction
+## Summary: Assessing the Problem
+Traditionally, borrowing costs have been tied to creditors' assessment of credit default risk based on simple, but broad financial criteria. Unfortunately, this leaves many potential borrowers out of the market, or paying higher interest rates. Conversely, these same criteria may not always be sufficient to redudce default risk by clients who may meet the criteria, but may eventually default because of other, potentially forseeable, reasons not sufficiently accounted for in the criteria.
+
+## Purpose of This Report
+The purpose of the present documents is to demonstrate the proceedures I used to:
+
+1. Conduct an initial examination of the data and determine wich of the date ought to be used;
+2. Clean the data, including removing NA values, grouping data when relevant and creating dummy variables where releveant;
+3. Generate a clean data set ready for use in ML models.
+
+
+#The Data
+##Overview
+The data is available on the [Kaggle Compeitions website](https://www.kaggle.com/c/home-credit-default-risk/data).
+It consists of:
+
+1. application_{train|test}.csv - the main data file, with test and train sets
+2. bureau.csv - each applicant's previous credit as provided by a credit bureau
+3. bureau_balance.csv - each applicant's monthly credit balances as provided by a credit bureau
+4. POS_CASH_balance.csv - monthly balance snapshots of previous POS and cash loans that the applicant had with Home Credit.
+5. credit_card_balance.csv - monthly balance snapshots of previous credit cards that the applicant has with Home Credit.
+6. previous_application.csv - all previous applications for Home Credit loans of clients who have loans in the sample
+7. installment_payments.csv - repayment history for the previously dispersed credits in Home Credit as applicable to the sample
+8. HomeCredit_columns_description.csv - column descriptions for the other files.
+
+##Data Wrangling Steps
+The code for data wrangling is contained in the file "data_cleanup.R"
+
+1. Ititial inspection of the various data sets suppllied by Home Credit suggested that the data relevant to my project included three files:
+  a. application_train.csv - the training data
+  b. application_test.csv = the data upon which to eventually test; if I had been participatin in the competition officially, this is the file I would have submitted with my results
+  c. bureau.csv - data collected from an outside bureau.
+  
+  
+2. I created a merged data set of the application_train and application_test for the purpose of consistent processes of data cleanup applied to both; the sets are later separated again base on whether TARGET has a value or an NA present, as in the test set this value is empty and is to be determined by the model.
+
+3. I then merged the data from this combined set with bureau.csv so that all data would be present in the dataframe.
+
+4. I cleaned up various headers for legibility and ease of understanding
+
+5. I wrote code to search for NA values and then fixed them as follows:
+- PAYMENT_AMOUNT when NA was set to 0
+- PURCHASE_PRICE_OF_GOODS was set to 0, as it only applies to certain loan types
+- RATIO_LOAN_TO_ANNUITY was set to 0 as this ratio is only applicable to certain loan types
+- MAX_DAYS_LATE_BUREAU was set to 0 as an NA value suggests no late payments
+- AGE_OF_CAR was set to 0, as NA values here corresponded to the sample not owning a car
+
+
+6. For the variable "Children," i.e. which indicates the number of of children the sample has, I grouped all values of 5 or more children into the category "5Plus"
+
+7. For the variable "Employer Type Grouped," I reduced the number of groupings significantly by grouping Employer types further
+
+8. I created a version of the data set with dummy variables substitued for categorical variables, for the purpose of training ML models
+
+9. At this point I separate the train and test sets, which were merged in Step 2 above, based on whether TARGET has a value or an NA
+
+10. I then suffled the remaining train data to remove any ordering bias
+
+11. Using P values obtained from summary data from running glm, I selected features to keep for my models and removed those that would not significantly impact the models
+
+At this point, having removed data that would not significantly reduce the impact on my models, and having furthermore created dummy variables and then tested each for significance, the following features remained in my data set:
+AGE.
+AGE_OF_CAR  
+TOTAL_INCOME  
+LOAN_AMOUNT  
+PAYMENT_AMOUNT  
+PURCHASE_PRICE_OF_GOODS  
+RATIO_LOAN_TO_ANNUITY  
+YEARS_AT_CURRENT_JOB  
+YEARS_SINCE_GETTING_IDENTITY_DOCUMENT  
+MAX_DAYS_LATE_BUREAU  
+GENDERM  
+GENDERXNA  
+OWNS_CARY  
+OWNS_REALTYY  
+MARITAL_STATUSMarried  
+MARITAL_STATUSSeparated  
+MARITAL_STATUSSingle_or_not_married  
+MARITAL_STATUSUnknown  
+MARITAL_STATUSWidow  
+INCOME_TYPE_GROUPEDOther  
+INCOME_TYPE_GROUPEDPensioner  
+INCOME_TYPE_GROUPEDState_servant  
+INCOME_TYPE_GROUPEDWorking  
+EDUCATIONHigher_education  
+EDUCATIONIncomplete_higher  
+EDUCATIONLower_secondary  
+EDUCATIONSecondary_or_secondary_special  
+CHILDREN1  
+CHILDREN2  
+CHILDREN3  
+CHILDREN4  
+CHILDREN5Plus  
+REGION_AND_CITY_RATING1  
+REGION_AND_CITY_RATING2  
+REGION_AND_CITY_RATING3  
+EMPLOYER_TYPE_GROUPEDBank  
+EMPLOYER_TYPE_GROUPEDBusiness_Entity  
+EMPLOYER_TYPE_GROUPEDEducation  
+EMPLOYER_TYPE_GROUPEDElectricity  
+EMPLOYER_TYPE_GROUPEDGovt_Services  
+EMPLOYER_TYPE_GROUPEDHousing  
+EMPLOYER_TYPE_GROUPEDIndustry  
+EMPLOYER_TYPE_GROUPEDMedicine  
+EMPLOYER_TYPE_GROUPEDOther  
+EMPLOYER_TYPE_GROUPEDSelf_employed  
+EMPLOYER_TYPE_GROUPEDService  
+EMPLOYER_TYPE_GROUPEDTrade  
+EMPLOYER_TYPE_GROUPEDTransport  
+EMPLOYER_TYPE_GROUPEDXNA  
+HOUSING_STATUSHouse_or_apartment  
+HOUSING_STATUSMunicipal_apartment  
+HOUSING_STATUSOffice_apartment  
+HOUSING_STATUSRented_apartment  
+HOUSING_STATUSWith_parents  
+LOAN_TYPERevolving_loans  
+
+# Next Steps
+Using this historical client credit data from Home Credit, an international lender that provides small loans to consumers, I will create several models capable of predicting, with varying degrees of accuracy, an individual applicants's liklihood of defaulting on a loan, if offered to them. The best of these models can then be used by the client to make more refined decisions as to whom they offer loans in the future, the types of loans offered and the interest terms.
