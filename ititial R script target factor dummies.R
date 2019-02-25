@@ -187,6 +187,8 @@ results$EMPLOYER_TYPE <- NULL
 results$AGE_OF_CAR[is.na(results$AGE_OF_CAR)] <- as.numeric(0)
 results$MAX_DAYS_LATE_BUREAU[is.na(results$AGE_OF_CAR)] <- as.numeric(0)
 
+# write csv for graphs
+write_csv(results, "results_graphs.csv")
 
 #create version with dummy columns
 results_dummy <- results
@@ -216,6 +218,9 @@ results_dummy$'(Intercept)' <- NULL
 results_dummy$'(Intercept)' <- NULL
 results_dummy$'(Intercept)' <- NULL
 # results$'(Intercept)' <- NULL
+
+
+
 
 #remove original columns
 
@@ -388,564 +393,564 @@ write.csv(results_train_Test, "results_train_Test.csv")
 # results_train_Test <- read.csv("results_train_Test.csv", row.names = c(1))
 
 
-
-
-###RUNNING MODELS BEGIN HERE
-setwd("C:/Users/Jim/Google Drive/Documents/gits/Home_Credit_Default_Risk")
-library(tidyverse)
-library(GGally)
-library(gridExtra)
-library(tictoc)
-library(ROCR)
-library(randomForest)
-results_train_Train <- read.csv("results_train_Train.csv", row.names = 1)
-results_train_Train$TARGET <- as.factor(results_train_Train$TARGET)
-results_train_Test <- read.csv("results_train_Test.csv", row.names = 1)
-results_train_Test$TARGET <- as.factor(results_train_Test$TARGET)
-
-names(results_train_Test)<-make.names(names(results_train_Test),unique = TRUE)
-names(results_train_Train)<-make.names(names(results_train_Train),unique = TRUE)
-
-#Initialize evaluation df
-RFModelEval = data.frame(matrix(ncol = 4, nrow = 0))
-colnames(RFModelEval) <- c("percent of data", "train time",
-                           "sensitivity: TP/(TP+FN)", "overall accuracy: (TN+TP)/N")
-View(RFModelEval)
-
-
-#GLM model
-tic("GLM")
-Log.mod <- glm(TARGET ~ .,
-               data = results_train_Train,
-               family = binomial)
-tictoc_GLM <- toc()
-summary(Log.mod)
-
-
-
-predictTrainGLM <- predict(Log.mod, type = "response") #tells predict fcnt to give us probailities
-summary(predictTrainGLM)
-str(predictTrainGLM)
-str(results_train_Train)
-
-
-#to test actual vs. predicted
-GLMCONF <- table(results_train_Train$TARGET, predictTrainGLM > .5)
-GLMCONF
-
-RFModelEval[10, 1] <- "100 GLM"
-RFModelEval[10, 2] <- tictoc_GLM$toc - tictoc_GLM$tic
-RFModelEval[10,3] <- GLMCONF[2,2]/(GLMCONF[2,2] + GLMCONF[2,1])
-RFModelEval[10,4] <- (GLMCONF[1,1]+GLMCONF[2,2]) / sum(GLMCONF[1:2, 1:2])
-# rows = true outcome, cols = predicted outcome - so 70 correct goodcare, 10 correct poorcare
-
-# sensitivity <- 10/25 # correct positives/total positives
-# sensitivity
-# specificity <- 70/74 #true negatives/total negatives
-# specificity
-
-
-ROCRpred <- prediction(predictTrainGLM, results_train_Train$TARGET)
-#predicition is a fucntion from package ROCR, predictTrain is our prediction fuction
-#from above, qualityTrain$Poorcare is our TRUE OUTCOMES
-ROCRperf <- performance(ROCRpred, "tpr", "fpr")
-#tpr - true positive rate, fpr - false positive rate, mapped to x and y axes
-plot(ROCRperf, colorize = TRUE, print.cutoffs.at = seq(0,1,.1), text.adj = c(-0.2, 1.7), main = "GLM 100%")
-
-
-#Now run prediction on test set
-predictTestGLM <- predict(Log.mod, type = "response", newdata = results_train_Test)
-table(results_train_Test$TARGET, predictTestGLM > 0.5)
-View(RFModelEval)
-saveRDS(Log.mod, "./Log-mod")
-write.csv(RFModelEval, "RFModelEval.csv")
-
-#Simple Tree
-library(rpart)
-tic("simple tree")
-myTree = rpart(TARGET ~ ., data = results_train_Train, method = "class")
-tictoc_Tree = toc()
-plotcp(myTree)
-summary(myTree)
-plot(myTree)
-print(myTree)
-
-predictTrainTree <- predict(myTree) #tells predict fcnt to give us probailities
-summary(predictTrainTree)
-str(predictTrainTree)
-str(results_train_Tree)
-
-
-#to test actual vs. predicted
-TreeCONF <- table(results_train_Train$TARGET, predictTrainTree[,2] > .5)
-TreeCONF
-
-RFModelEval[13, 1] <- "100 Simple Tree"
-RFModelEval[13, 2] <- tictoc_Tree$toc - tictoc_Tree$tic
-RFModelEval[13,3] <- TreeCONF[2,2]/(TreeCONF[2,2] + TreeCONF[2,1])
-RFModelEval[13,4] <- (TreeCONF[1,1]+TreeCONF[2,2]) / sum(TreeCONF[1:2, 1:2])
-View(RFModelEval)
-saveRDS(myTree, "./myTree.rds")
-write.csv(RFModelEval, "RFModelEval.csv")
-
-#naive bayes
-library(e1071)
-tic("Naive Bayes")
-myNaiveBayes <- naiveBayes(TARGET ~ ., results_train_Train)
-tictoc_NB = toc()
-plot(myNaiveBayes, results_train_Train)
-print(myNaiveBayes)
-saveRDS(myNaiveBayes, "myNaiveBayes")
-nb_predict_100 <- predict(myNaiveBayes, results_train_Train)
-ROCRpred_nb100 <- prediction(as.numeric(nb_predict_100), results_train_Train$TARGET)
-#predicition is a fucntion from package ROCR, predictTrain is our prediction fuction
-#from above, qualityTrain$Poorcare is our TRUE OUTCOMES
-ROCRperf_nb100 <- performance(ROCRpred_nb100, "tpr", "fpr")
-#tpr - true positive rate, fpr - false positive rate, mapped to x and y axes
-plot(ROCRperf_nb100, colorize = TRUE, print.cutoffs.at = seq(0,1,.1),
-     text.adj = c(-0.2, 1.7), main = "Naive Bayes 100%")
-predictTest_nb100 <- predict(myNaiveBayes, newdata = results_train_Test)
-table(results_train_Test$TARGET, predictTest_nb100)
-ConfMat_nb100 <- table(results_train_Test$TARGET, predictTest_nb100)
-ConfMat_nb100
-RFModelEval[14, 1] <- "100 Naive Bayes"
-RFModelEval[14,2] <- tictoc_NB$toc - tictoc_NB$tic
-RFModelEval[14,3] <- ConfMat_nb100[2,2]/(ConfMat_nb100[2,2] + ConfMat_nb100[2,1])
-RFModelEval[14,4] <- (ConfMat_nb100[1,1]+ConfMat_nb100[2,2]) / sum(ConfMat_nb100[1:2, 1:2])
-View(RFModelEval)
-saveRDS(myNaiveBayes, "./myNaiveBayes.rds")
-write.csv(RFModelEval, "RFModelEval.csv")
-
-#k nearest neighboor
-#MIGHT NEED TO REDO DUMMIES WITH N DUMMIES INSTEAD OF N-1
-#Create dummy variables out of a categorical variable and include
-#them instead of original categorical variable. Unlike regression,
-#create k dummies instead of (k-1). For example, a categorical variable
-#named "Department" has 5 unique levels / categories. So we will create 5
-#dummy variables. Each dummy variable has 1 against its department and else 0.
-
-
-
-library(caret)
-tic("K nearest neighbor")
-trctrl <- trainControl(method = "repeatedcv", number = 10, repeats = 3,
-                       classProbs = TRUE)
-myKnn <- train(TARGET~. , data = results_train_Train, method = "knn",
-               preProcess = c("center","scale"),
-               trControl = trctrl,
-               metric = "ROC" #,
-               # tuneLength = tunel
-)
-
-tictoc_Knn <- toc()
-
-# Summary of model
-myKnn
-plot(myKnn, main = "myKnn")
-
-# Validation
-myKnn_pred <- predict(myKnn, results_train_Test, type = "prob")
-
-#Storing Model Performance Scores
-knn_pred_val <-prediction(myKnn_pred[,2],results_train_Test$TARGET)
-
-# Calculating Area under Curve (AUC)
-knn_perf_val <- performance(knn_pred_val,"auc")
-knn_perf_val
-
-# Plot AUC
-knn_perf_val <- performance(knn_pred_val, "tpr", "fpr")
-plot(knn_perf_val, col = "green", lwd = 1.5, main = "RKnn performance")
-
-#Calculating KS statistics
-ks <- max(attr(knn_perf_val, "y.values")[[1]] - (attr(knn_perf_val, "x.values")[[1]]))
-ks
-ConfMat_knn <- table(results_train_Test$TARGET, myKnn_pred)
-ConfMat_knn
-RFModelEval[11,2] <- tictoc_Knn$tic - tictoc_Knn$toc
-RFModelEval[11,3] <- ConfMat_knn[2,2]/(ConfMat_knn[2,2] + ConfMat_knn[2,1])
-RFModelEval[11,4] <- (ConfMat_knn[1,1]+ConfMat_knn[2,2]) / sum(ConfMat_knn[1:2, 1:2])
-View(RFModelEval)
-saveRDS(myKnn, "./myKnn.rds")
-write.csv(RFModelEval, "RFModelEval.csv")
-
-#support vector machine
-library(e1071)
-tic("SVM")
-mySvm <- svm(TARGET ~ ., data = results_train_Train, kernel = "linear")
-tictoc_SVM <- toc()
-plot(mySvm, results_train_Test, main = "Kvm")
-print(mySvm)
-saveRDS(mySvm, "./mySvm.rds")
-write.csv(RFModelEval, "RFModelEval.csv")
-
-# TARGET is factor
-svm_predict_100 <- predict(mySvm, results_train_Train, type = "response")
-ROCRpred_svm100 <- prediction(as.numeric(svm_predict_100), results_train_Train$TARGET)
-#predicition is a fucntion from package ROCR, predictTrain is our prediction fuction
-#from above, qualityTrain$Poorcare is our TRUE OUTCOMES
-ROCRperf_svm100 <- performance(ROCRpred_svm100, "tpr", "fpr")
-#tpr - true positive rate, fpr - false positive rate, mapped to x and y axes
-plot(ROCRperf_svm100, colorize = TRUE, print.cutoffs.at = seq(0,1,.1),
-     text.adj = c(-0.2, 1.7), main = "Kvm 100% Train test on self")
-predictTest_svm100 <- predict(mySvm, type = "response", newdata = results_train_Test)
-table(results_train_Test$TARGET, predictTest_svm100)
-ConfMat_svm100 <- table(results_train_Test$TARGET, predictTest_svm100)
-ConfMat_svm100
-RFModelEval[8,2] <- tictoc_SVM$tic - tictoc_SVM$toc
-RFModelEval[8,3] <- ConfMat_svm60[2,2]/(ConfMat_svm60[2,2] + ConfMat_svm60[2,1])
-RFModelEval[8,4] <- (ConfMat_svm60[1,1]+ConfMat_svm60[2,2]) / sum(ConfMat_svm60[1:2, 1:2])
-View(RFModelEval)
-saveRDS(mySvm, "./mySvm.rds")
-write.csv(RFModelEval, "RFModelEval.csv")
-
-
-
-
-#Random Forest
-##Segment train set into subets for performance comparison - 5 10 20 30 60 80
-results_train_Train_05 <- results_train_Train[sample(nrow(results_train_Train),
-                                                     nrow(results_train_Train) * 0.05), ]
-write.csv(results_train_Train_05, "results_train_Train_05.csv")
-
-results_train_Train_10 <- results_train_Train[sample(nrow(results_train_Train),
-                                                     nrow(results_train_Train) * 0.1), ]
-write.csv(results_train_Train_10, "results_train_Train_10.csv")
-results_train_Train_20 <- results_train_Train[sample(nrow(results_train_Train),
-                                                     nrow(results_train_Train) * 0.2), ]
-write.csv(results_train_Train_20, "results_train_Train_20.csv")
-results_train_Train_30 <- results_train_Train[sample(nrow(results_train_Train),
-                                                     nrow(results_train_Train) * 0.3), ]
-write.csv(results_train_Train_30, "results_train_Train_30.csv")
-results_train_Train_60 <- results_train_Train[sample(nrow(results_train_Train),
-                                                     nrow(results_train_Train) * 0.6), ]
-write.csv(results_train_Train_60, "results_train_Train_60.csv")
-results_train_Train_80 <- results_train_Train[sample(nrow(results_train_Train),
-                                                     nrow(results_train_Train) * 0.8), ]
-write.csv(results_train_Train_80, "results_train_Train_80.csv")
-results_train_Train_100 <- results_train_Train[sample(nrow(results_train_Train),
-                                                     nrow(results_train_Train)), ]
-write.csv(results_train_Train_100, "results_train_Train_100.csv")
-write.csv(results_train_Train, "results_train_Train.csv")
-
-remove(results_train_Train_05)
-remove(results_train_Train_10)
-remove(results_train_Train_20)
-remove(results_train_Train_30)
-remove(results_train_Train_60)
-remove(results_train_Train_80)
-remove(results_train_Train_100)
-remove(results_train_Train)
-
-#load the libraries
-library(randomForest)
-library(tictoc)
-library(ROCR)
-
-#train the model
-#start tictoc timer
-results_train_Train_05 <- read.csv("results_train_Train_05.csv")[-1]
-tic("05 percent")
-#train model
-rf_classifier_05 = randomForest(TARGET ~ ., data = results_train_Train_05, importance = TRUE)
-#stop timer
-tictoc_05 <- toc()
-#write values to our performance evalation table
-RFModelEval[1, 1] <- "5"
-RFModelEval[1, 2] <- tictoc_05$toc - tictoc_05$tic
-#test the model against the data on which it was trained
-rf_predict_05 <- predict(rf_classifier_05, results_train_Train_05, type = "response")
-#predicition is a fucntion from package ROCR, rf_predict_05 is our prediction fuction
-#from above, results_train_Train_05$TARGET is our TRUE OUTCOMES
-ROCRpred_05 <- prediction(as.numeric(rf_predict_05), as.numeric(results_train_Train_05$TARGET))
-ROCRperf_05 <- performance(ROCRpred_05, "tpr", "fpr")
-#tpr - true positive rate, fpr - false positive rate, mapped to x and y axes
-plot(ROCRperf_05, colorize = TRUE, print.cutoffs.at = seq(0,1,.1), text.adj = c(-0.2, 1.7), main = "RF 5% Train test on self")
-#Now run prediction on test set
-predictTest_05 <- predict(rf_classifier_05, type = "response", newdata = results_train_Test)
-table(results_train_Test$TARGET, predictTest_05)
-#make a confusion matrix to compare predicted vs. actual on the TEST set
-ConfMat_05 <- table(results_train_Test$TARGET, predictTest_05)
-ConfMat_05
-#And add performance stats to evlauation table
-RFModelEval[1,3] <- ConfMat_05[2,2]/(ConfMat_05[2,2] + ConfMat_05[2,1])
-RFModelEval[1,4] <- (ConfMat_05[1,1]+ConfMat_05[2,2]) / sum(ConfMat_05[1:2, 1:2])
-View(RFModelEval)
-saveRDS(rf_classifier_05, "./rf_classifier_05.rds")
-write.csv(RFModelEval, "RFModelEval.csv")
-remove(results_train_Train_05)
-
-results_train_Train_10 <- read.csv("results_train_Train_10.csv")[-1]
-tic("10 percent")
-rf_classifier_10 = randomForest(data=results_train_Train_10, TARGET ~ .)
-tictoc_10 <- toc()
-RFModelEval[2, 1] <- "10"
-RFModelEval[2, 2] <- tictoc_10$toc - tictoc_10$tic
-rf_predict_10 <- predict(rf_classifier_10, results_train_Train_10, type = "response")
-ROCRpred_10 <- prediction(as.numeric(rf_predict_10), as.numeric(results_train_Train_10$TARGET))
-#predicition is a fucntion from package ROCR, predictTrain is our prediction fuction
-#from above, qualityTrain$Poorcare is our TRUE OUTCOMES
-ROCRperf_10 <- performance(ROCRpred_10, "tpr", "fpr")
-#tpr - true positive rate, fpr - false positive rate, mapped to x and y axes
-plot(ROCRperf_10, colorize = TRUE, print.cutoffs.at = seq(0,1,.1),
-     text.adj = c(-0.2, 1.7), main = "RF 10% Train test on self")
-predictTest_10 <- predict(rf_classifier_10, type = "response",
-                          newdata = results_train_Test)
-table(results_train_Test$TARGET, predictTest_10)
-ConfMat_10 <- table(results_train_Test$TARGET, predictTest_10)
-ConfMat_10
-RFModelEval[2,3] <- ConfMat_10[2,2]/(ConfMat_10[2,2] + ConfMat_10[2,1])
-RFModelEval[2,4] <- (ConfMat_10[1,1]+ConfMat_10[2,2]) / sum(ConfMat_10[1:2, 1:2])
-View(RFModelEval)
-saveRDS(rf_classifier_10, "./rf_classifier_10.rds")
-write.csv(RFModelEval, "RFModelEval.csv")
-remove(results_train_Train_10)
-
-
-results_train_Train_20 <- read.csv("results_train_Train_20.csv")[-1]
-tic("20 percent")
-rf_classifier_20 = randomForest(data=results_train_Train_20, TARGET ~ .)
-tictoc_20 <- toc()
-RFModelEval[3, 1] <- "20"
-RFModelEval[3, 2] <- tictoc_20$toc - tictoc_20$tic
-rf_predict_20 <- predict(rf_classifier_20, results_train_Train_20)
-ROCRpred_20 <- prediction(as.numeric(rf_predict_20), results_train_Train_20$TARGET)
-ROCRperf_20 <- performance(ROCRpred_20, "tpr", "fpr")
-#tpr - true positive rate, fpr - false positive rate, mapped to x and y axes
-plot(ROCRperf_20, colorize = TRUE, print.cutoffs.at = seq(0,1,.1),
-     text.adj = c(-0.2, 1.7), main = "RF 20% Train test on self")
-predictTest_20 <- predict(rf_classifier_20, newdata = results_train_Test)
-table(results_train_Test$TARGET, predictTest_20)
-ConfMat_20 <- table(results_train_Test$TARGET, predictTest_20)
-ConfMat_20
-remove(results_train_Train_20)
-
-#TEST is same as above but with TARGET as factor
-results_train_Train_20 <- read.csv("results_train_Train_20.csv")[-1]
-tic("20 percent TARGET AS FACTOR")
-rf_classifier_20a = randomForest(data=results_train_Train_20, TARGET ~ .)
-tictoc_20a <- toc()
-RFModelEval[12, 1] <- "20 TARGET AS FACTOR"
-RFModelEval[12, 2] <- tictoc_20a$toc - tic
-rf_predict_20a <- predict(rf_classifier_20a, results_train_Train_20)
-ROCRpred_20a <- prediction(as.numeric(rf_predict_20a), results_train_Train_20$TARGET)
-#predicition is a fucntion from package ROCR, predictTrain is our prediction fuction
-#from above, qualityTrain$Poorcare is our TRUE OUTCOMES
-ROCRperf_20a <- performance(ROCRpred_20a, "tpr", "fpr")
-plot(ROCRperf_20a, colorize = TRUE, print.cutoffs.at = seq(0,1,.1),
-     text.adj = c(-0.2, 1.7), main = "RF 20% Train test on self TARGET AS FACTOR")
-RFModelEval[12,3] <- ConfMat_20[2,2]/(ConfMat_20[2,2] + ConfMat_20[2,1])
-RFModelEval[12,4] <- (ConfMat_20[1,1]+ConfMat_20[2,2]) / sum(ConfMat_20[1:2, 1:2])
-View(RFModelEval)
-saveRDS(rf_classifier_20, "./rf_classifier_20.rds")
-write.csv(RFModelEval, "RFModelEval.csv")
-remove(results_train_Train_20)
-
-
-results_train_Train_30 <- read.csv("results_train_Train_30.csv")[-1]
-tic("30 percent")
-rf_classifier_30 = randomForest(data=results_train_Train_30, TARGET ~ .)
-tictoc_30 <- toc()
-RFModelEval[4, 1] <- "30"
-RFModelEval[4, 2] <- tictoc_30$toc - tictoc_30$tic
-rf_predict_30 <- predict(rf_classifier_30, results_train_Train_30, type = "response")
-ROCRpred_30 <- prediction(as.numeric(rf_predict_30), as.numeric(results_train_Train_30$TARGET))
-#predicition is a fucntion from package ROCR, predictTrain is our prediction fuction
-#from above, qualityTrain$Poorcare is our TRUE OUTCOMES
-ROCRperf_30 <- performance(ROCRpred_30, "tpr", "fpr")
-#tpr - true positive rate, fpr - false positive rate, mapped to x and y axes
-plot(ROCRperf_30, colorize = TRUE, print.cutoffs.at = seq(0,1,.1),
-     text.adj = c(-0.2, 1.7), main = "RF 30% Train test on self")
-predictTest_30 <- predict(rf_classifier_30, type = "response", newdata = results_train_Test)
-table(results_train_Test$TARGET, predictTest_30)
-ConfMat_30 <- table(results_train_Test$TARGET, predictTest_30)
-ConfMat_30
-RFModelEval[4,3] <- ConfMat_30[2,2]/(ConfMat_30[2,2] + ConfMat_30[2,1])
-RFModelEval[4,4] <- (ConfMat_30[1,1]+ConfMat_30[2,2]) / sum(ConfMat_30[1:2, 1:2])
-View(RFModelEval)
-saveRDS(rf_classifier_30, "./rf_classifier_30.rds")
-write.csv(RFModelEval, "RFModelEval.csv")
-remove(results_train_Train_30)
-
-
-results_train_Train_60 <- read.csv("results_train_Train_60.csv")[-1]
-tic("60 percent")
-rf_classifier_60 = randomForest(data=results_train_Train_60, TARGET ~ .)
-tictoc_60 <- toc()
-RFModelEval[5, 1] <- "60"
-RFModelEval[5, 2] <- tictoc_60$toc - tictoc_60$tic
-rf_predict_60 <- predict(rf_classifier_60, results_train_Train_60, type = "response")
-ROCRpred_60 <- prediction(as.numeric(rf_predict_60), as.numeric(results_train_Train_60$TARGET))
-#predicition is a fucntion from package ROCR, predictTrain is our prediction fuction
-#from above, qualityTrain$Poorcare is our TRUE OUTCOMES
-ROCRperf_60 <- performance(ROCRpred_60, "tpr", "fpr")
-#tpr - true positive rate, fpr - false positive rate, mapped to x and y axes
-plot(ROCRperf_60, colorize = TRUE, print.cutoffs.at = seq(0,1,.1),
-     text.adj = c(-0.2, 1.7), main = "RF 60% Train test on self")
-predictTest_60 <- predict(rf_classifier_60, type = "response", newdata = results_train_Test)
-table(results_train_Test$TARGET, predictTest_60)
-ConfMat_60 <- table(results_train_Test$TARGET, predictTest_60)
-ConfMat_60
-RFModelEval[5,3] <- ConfMat_60[2,2]/(ConfMat_60[2,2] + ConfMat_60[2,1])
-RFModelEval[5,4] <- (ConfMat_60[1,1]+ConfMat_60[2,2]) / sum(ConfMat_60[1:2, 1:2])
-View(RFModelEval)
-saveRDS(rf_classifier_60, "./rf_classifier_60.rds")
-write.csv(RFModelEval, "RFModelEval.csv")
-remove(results_train_Train_60)
-
-
-
-tic("80 percent")
-results_train_Train_80 <- read.csv("results_train_Train_80.csv")[-1]
-rf_classifier_80 = randomForest(data=results_train_Train_80, TARGET ~ .)
-tictoc_80 <- toc()
-RFModelEval[6, 1] <- "80"
-RFModelEval[6, 2] <- tictoc_80$toc - tictoc_80$tic
-rf_predict_80 <- predict(rf_classifier_80, results_train_Train_80, type = "response")
-ROCRpred_80 <- prediction(as.numeric(rf_predict_80), as.numeric(results_train_Train_80$TARGET))
-#predicition is a fucntion from package ROCR, predictTrain is our prediction fuction
-#from above, qualityTrain$Poorcare is our TRUE OUTCOMES
-ROCRperf_80 <- performance(ROCRpred_80, "tpr", "fpr")
-#tpr - true positive rate, fpr - false positive rate, mapped to x and y axes
-plot(ROCRperf_80, colorize = TRUE, print.cutoffs.at = seq(0,1,.1),
-     text.adj = c(-0.2, 1.7), main = "RF 80% Train test on self")
-predictTest_80 <- predict(rf_classifier_80, type = "response", newdata = results_train_Test)
-table(results_train_Test$TARGET, predictTest_80)
-ConfMat_80 <- table(results_train_Test$TARGET, predictTest_80)
-ConfMat_80
-RFModelEval[6,3] <- ConfMat_80[2,2]/(ConfMat_80[2,2] + ConfMat_80[2,1])
-RFModelEval[6,4] <- (ConfMat_80[1,1]+ConfMat_80[2,2]) / sum(ConfMat_80[1:2, 1:2])
-View(RFModelEval)
-saveRDS(rf_classifier_80, "./rf_classifier_80.rds")
-write.csv(RFModelEval, "RFModelEval.csv")
-remove(results_train_Train_80)
-
-results_train_Train_100 <- read.csv("results_train_Train_100")[-1]
-tic("100 percent")
-rf_classifier_100 = randomForest(data=results_train_Train_100, TARGET ~ .)
-tictoc_100 <- toc()
-RFModelEval[7, 1] <- "100"
-RFModelEval[7, 2] <- tictoc_100$toc - tictoc_100$tic
-rf_predict_100 <- predict(rf_classifier_100, results_train_Train_100, type = "response")
-ROCRpred_100 <- prediction(as.numeric(rf_predict_100), as.numeric(results_train_Train_100$TARGET))
-#predicition is a fucntion from package ROCR, predictTrain is our prediction fuction
-#from above, qualityTrain$Poorcare is our TRUE OUTCOMES
-ROCRperf_100 <- performance(ROCRpred_100, "tpr", "fpr")
-#tpr - true positive rate, fpr - false positive rate, mapped to x and y axes
-plot(ROCRperf_100, colorize = TRUE, print.cutoffs.at = seq(0,1,.1),
-     text.adj = c(-0.2, 1.7), main = "RF 100% Train test on self")
-predictTest_100 <- predict(rf_classifier_100, type = "response", newdata = results_train_Test)
-table(results_train_Test$TARGET, predictTest_100)
-ConfMat_100 <- table(results_train_Test$TARGET, predictTest_100)
-ConfMat_100
-RFModelEval[7,3] <- ConfMat_100[2,2]/(ConfMat_100[2,2] + ConfMat_100[2,1])
-RFModelEval[7,4] <- (ConfMat_100[1,1]+ConfMat_100[2,2]) / sum(ConfMat_100[1:2, 1:2])
-View(RFModelEval)
-saveRDS(rf_classifier_100, "./rf_classifier_100.rds")
-write.csv(RFModelEval, "RFModelEval.csv")
-remove(results_train_Train)
-
-
-
-
-
-
-
-
-
-
-##OTHER FUNCTIONS
-
-# #Look for NAs
-# na_count <- data.frame("Num_NAs" = sapply(application_all, function(y) sum(length(which(is.na(y))))))
-# na_count$percent_NAs <- as.integer(100 * na_count$Num_NAs / nrow(application_all))
-# View(na_count)
-
-# 
-# #The following creates a df that shows that all major outliers for
-# #days_employed are pensioners, and a few unemplyed
-# outliers_emp <- data.frame(filter(application_all, DAYS_EMPLOYED > 10000))
-# View(outliers_emp)
 # 
 # 
-# #plot something
-# ggplot(results_train, aes(x = factor(TARGET))) +
-#   geom_bar(stat = "count")
-# ggplot(results_train, aes(x = LOAN_TYPE )) +
-#   geom_bar(stat = "count")
-# ggplot(results_train, aes(x = AGE)) +
-#   geom_histogram(stat = "bin", bins = 20)
-# ggplot(results_train, aes(x = GENDER)) +
-#   geom_bar(stat = "count")
-# ggplot(results_train, aes(x = OWNS_CAR)) +
-#   geom_bar(stat = "count")
-# ggplot(results_train, aes(x = AGE_OF_CAR)) +
-#   geom_histogram(stat = "bin", binwidth = 2.5)
-# ggplot(results_train, aes(x = OWNS_REALTY)) +
-#   geom_bar(stat = "count")
-# ggplot(results_train, aes(x = factor(CHILDREN))) +
-#   geom_bar(stat = "count")
-# ggplot(results_train, aes(x = TOTAL_INCOME)) +
-#   scale_x_log10(breaks=c(1e+5,1e+6)) +
-#   xlim(0, 1e+6) +
-#   geom_histogram(bins = 20)
-# # add limit
-# ggplot(results_train, aes(x = LOAN_AMOUNT)) +
-#   geom_histogram(stat = "bin")
+# ###RUNNING MODELS BEGIN HERE
+# setwd("C:/Users/Jim/Google Drive/Documents/gits/Home_Credit_Default_Risk")
+# library(tidyverse)
+# library(GGally)
+# library(gridExtra)
+# library(tictoc)
+# library(ROCR)
+# library(randomForest)
+# results_train_Train <- read.csv("results_train_Train.csv", row.names = 1)
+# results_train_Train$TARGET <- as.factor(results_train_Train$TARGET)
+# results_train_Test <- read.csv("results_train_Test.csv", row.names = 1)
+# results_train_Test$TARGET <- as.factor(results_train_Test$TARGET)
 # 
-# ggplot(results_train, aes(x = PAYMENT_AMOUNT)) +
-#   geom_histogram(stat = "bin")
+# names(results_train_Test)<-make.names(names(results_train_Test),unique = TRUE)
+# names(results_train_Train)<-make.names(names(results_train_Train),unique = TRUE)
 # 
-# # add limit
-# ggplot(results_train, aes(x = PURCHASE_PRICE_OF_GOODS)) +
-#   geom_histogram(stat = "bin")
-# ggplot(results_train, aes(x = RATIO_LOAN_TO_ANNUITY)) +
-#   geom_histogram()
-# ggplot(results_train, aes(x = INCOME_TYPE)) +
-#   geom_bar(stat = "count") +
-#   theme(axis.text.x = element_text(angle = 90, hjust = 1))
-# # ADD OTHER CATEGORY FOR LOW SAMPLES
-# ggplot(results_train, aes(x = EDUCATION)) +
-#   geom_bar(stat = "count")
-# ggplot(results_train, aes(x = MARITAL_STATUS)) +
-#   geom_bar(stat = "count")
-# ggplot(results_train, aes(x = HOUSING_STATUS)) +
-#   geom_bar(stat = "count")
-# ggplot(results_train, aes(x = YEARS_AT_CURRENT_JOB)) +
-#   geom_histogram(binwidth = 2)
-# #MAKE THE OUTLIERS = 0
-# ggplot(results_train, aes(x = EMPLOYER_TYPE)) +
-#   geom_bar(stat = "count")
-# #SORT ACCORDING TO NUMBER OF SAMPLES, AND THEN GROUP LOW-OCCURRING CATEGORIES
-# ggplot(results_train, aes(x = YEARS_SINCE_GETTING_IDENTITY_DOCUMENT)) +
-#   geom_histogram()
-# ggplot(results_train, aes(x = REGION_AND_CITY_RATING)) +
-#   geom_bar(stat = "count")
+# #Initialize evaluation df
+# RFModelEval = data.frame(matrix(ncol = 4, nrow = 0))
+# colnames(RFModelEval) <- c("percent of data", "train time",
+#                            "sensitivity: TP/(TP+FN)", "overall accuracy: (TN+TP)/N")
+# View(RFModelEval)
 # 
 # 
-# #results <- add_column(summarise(bureau_grouped_ID, max(CREDIT_DAY_OVERDUE)))
+# #GLM model
+# tic("GLM")
+# Log.mod <- glm(TARGET ~ .,
+#                data = results_train_Train,
+#                family = binomial)
+# tictoc_GLM <- toc()
+# summary(Log.mod)
 # 
-# # finalData<-subset(data,!(is.na(data["mmul"]) | is.na(data["rnor"]))) - use to remove rows with no TARGET value
-# # use merge to combine the test and train sets?
-# ggplot(results_train, aes(factor(TARGET),
-#            AGE)) +
-#   geom_jitter( alpha = .05)  +
-#   geom_boxplot( alpha = .5, color = "blue")+
-#   stat_summary(fun.y = "mean",
-#                geom = "point",
-#                color = "red",
-#                shape = 8,
-#                size = 4)
 # 
-# ggplot(results_train) + 
-#   geom_bar(aes(GENDER, TARGET), 
-#            position = "dodge", stat = "summary", fun.y = "mean")
-
-# test <- data.frame(a = as.factor(1:3), b = as.factor(4:6))
-# test <- cbind(test, as.data.frame(model.matrix(~test$a)))
-# test <- cbind(test, as.data.frame(model.matrix(~test$b)))
-# test$`(Intercept)` <- NULL
-# test$`(Intercept)` <- NULL
-# test$a <- NULL
-# test$b <- NULL
-# test
+# 
+# predictTrainGLM <- predict(Log.mod, type = "response") #tells predict fcnt to give us probailities
+# summary(predictTrainGLM)
+# str(predictTrainGLM)
+# str(results_train_Train)
+# 
+# 
+# #to test actual vs. predicted
+# GLMCONF <- table(results_train_Train$TARGET, predictTrainGLM > .5)
+# GLMCONF
+# 
+# RFModelEval[10, 1] <- "100 GLM"
+# RFModelEval[10, 2] <- tictoc_GLM$toc - tictoc_GLM$tic
+# RFModelEval[10,3] <- GLMCONF[2,2]/(GLMCONF[2,2] + GLMCONF[2,1])
+# RFModelEval[10,4] <- (GLMCONF[1,1]+GLMCONF[2,2]) / sum(GLMCONF[1:2, 1:2])
+# # rows = true outcome, cols = predicted outcome - so 70 correct goodcare, 10 correct poorcare
+# 
+# # sensitivity <- 10/25 # correct positives/total positives
+# # sensitivity
+# # specificity <- 70/74 #true negatives/total negatives
+# # specificity
+# 
+# 
+# ROCRpred <- prediction(predictTrainGLM, results_train_Train$TARGET)
+# #predicition is a fucntion from package ROCR, predictTrain is our prediction fuction
+# #from above, qualityTrain$Poorcare is our TRUE OUTCOMES
+# ROCRperf <- performance(ROCRpred, "tpr", "fpr")
+# #tpr - true positive rate, fpr - false positive rate, mapped to x and y axes
+# plot(ROCRperf, colorize = TRUE, print.cutoffs.at = seq(0,1,.1), text.adj = c(-0.2, 1.7), main = "GLM 100%")
+# 
+# 
+# #Now run prediction on test set
+# predictTestGLM <- predict(Log.mod, type = "response", newdata = results_train_Test)
+# table(results_train_Test$TARGET, predictTestGLM > 0.5)
+# View(RFModelEval)
+# saveRDS(Log.mod, "./Log-mod")
+# write.csv(RFModelEval, "RFModelEval.csv")
+# 
+# #Simple Tree
+# library(rpart)
+# tic("simple tree")
+# myTree = rpart(TARGET ~ ., data = results_train_Train, method = "class")
+# tictoc_Tree = toc()
+# plotcp(myTree)
+# summary(myTree)
+# plot(myTree)
+# print(myTree)
+# 
+# predictTrainTree <- predict(myTree) #tells predict fcnt to give us probailities
+# summary(predictTrainTree)
+# str(predictTrainTree)
+# str(results_train_Tree)
+# 
+# 
+# #to test actual vs. predicted
+# TreeCONF <- table(results_train_Train$TARGET, predictTrainTree[,2] > .5)
+# TreeCONF
+# 
+# RFModelEval[13, 1] <- "100 Simple Tree"
+# RFModelEval[13, 2] <- tictoc_Tree$toc - tictoc_Tree$tic
+# RFModelEval[13,3] <- TreeCONF[2,2]/(TreeCONF[2,2] + TreeCONF[2,1])
+# RFModelEval[13,4] <- (TreeCONF[1,1]+TreeCONF[2,2]) / sum(TreeCONF[1:2, 1:2])
+# View(RFModelEval)
+# saveRDS(myTree, "./myTree.rds")
+# write.csv(RFModelEval, "RFModelEval.csv")
+# 
+# #naive bayes
+# library(e1071)
+# tic("Naive Bayes")
+# myNaiveBayes <- naiveBayes(TARGET ~ ., results_train_Train)
+# tictoc_NB = toc()
+# plot(myNaiveBayes, results_train_Train)
+# print(myNaiveBayes)
+# saveRDS(myNaiveBayes, "myNaiveBayes")
+# nb_predict_100 <- predict(myNaiveBayes, results_train_Train)
+# ROCRpred_nb100 <- prediction(as.numeric(nb_predict_100), results_train_Train$TARGET)
+# #predicition is a fucntion from package ROCR, predictTrain is our prediction fuction
+# #from above, qualityTrain$Poorcare is our TRUE OUTCOMES
+# ROCRperf_nb100 <- performance(ROCRpred_nb100, "tpr", "fpr")
+# #tpr - true positive rate, fpr - false positive rate, mapped to x and y axes
+# plot(ROCRperf_nb100, colorize = TRUE, print.cutoffs.at = seq(0,1,.1),
+#      text.adj = c(-0.2, 1.7), main = "Naive Bayes 100%")
+# predictTest_nb100 <- predict(myNaiveBayes, newdata = results_train_Test)
+# table(results_train_Test$TARGET, predictTest_nb100)
+# ConfMat_nb100 <- table(results_train_Test$TARGET, predictTest_nb100)
+# ConfMat_nb100
+# RFModelEval[14, 1] <- "100 Naive Bayes"
+# RFModelEval[14,2] <- tictoc_NB$toc - tictoc_NB$tic
+# RFModelEval[14,3] <- ConfMat_nb100[2,2]/(ConfMat_nb100[2,2] + ConfMat_nb100[2,1])
+# RFModelEval[14,4] <- (ConfMat_nb100[1,1]+ConfMat_nb100[2,2]) / sum(ConfMat_nb100[1:2, 1:2])
+# View(RFModelEval)
+# saveRDS(myNaiveBayes, "./myNaiveBayes.rds")
+# write.csv(RFModelEval, "RFModelEval.csv")
+# 
+# #k nearest neighboor
+# #MIGHT NEED TO REDO DUMMIES WITH N DUMMIES INSTEAD OF N-1
+# #Create dummy variables out of a categorical variable and include
+# #them instead of original categorical variable. Unlike regression,
+# #create k dummies instead of (k-1). For example, a categorical variable
+# #named "Department" has 5 unique levels / categories. So we will create 5
+# #dummy variables. Each dummy variable has 1 against its department and else 0.
+# 
+# 
+# 
+# library(caret)
+# tic("K nearest neighbor")
+# trctrl <- trainControl(method = "repeatedcv", number = 10, repeats = 3,
+#                        classProbs = TRUE)
+# myKnn <- train(TARGET~. , data = results_train_Train, method = "knn",
+#                preProcess = c("center","scale"),
+#                trControl = trctrl,
+#                metric = "ROC" #,
+#                # tuneLength = tunel
+# )
+# 
+# tictoc_Knn <- toc()
+# 
+# # Summary of model
+# myKnn
+# plot(myKnn, main = "myKnn")
+# 
+# # Validation
+# myKnn_pred <- predict(myKnn, results_train_Test, type = "prob")
+# 
+# #Storing Model Performance Scores
+# knn_pred_val <-prediction(myKnn_pred[,2],results_train_Test$TARGET)
+# 
+# # Calculating Area under Curve (AUC)
+# knn_perf_val <- performance(knn_pred_val,"auc")
+# knn_perf_val
+# 
+# # Plot AUC
+# knn_perf_val <- performance(knn_pred_val, "tpr", "fpr")
+# plot(knn_perf_val, col = "green", lwd = 1.5, main = "RKnn performance")
+# 
+# #Calculating KS statistics
+# ks <- max(attr(knn_perf_val, "y.values")[[1]] - (attr(knn_perf_val, "x.values")[[1]]))
+# ks
+# ConfMat_knn <- table(results_train_Test$TARGET, myKnn_pred)
+# ConfMat_knn
+# RFModelEval[11,2] <- tictoc_Knn$tic - tictoc_Knn$toc
+# RFModelEval[11,3] <- ConfMat_knn[2,2]/(ConfMat_knn[2,2] + ConfMat_knn[2,1])
+# RFModelEval[11,4] <- (ConfMat_knn[1,1]+ConfMat_knn[2,2]) / sum(ConfMat_knn[1:2, 1:2])
+# View(RFModelEval)
+# saveRDS(myKnn, "./myKnn.rds")
+# write.csv(RFModelEval, "RFModelEval.csv")
+# 
+# #support vector machine
+# library(e1071)
+# tic("SVM")
+# mySvm <- svm(TARGET ~ ., data = results_train_Train, kernel = "linear")
+# tictoc_SVM <- toc()
+# plot(mySvm, results_train_Test, main = "Kvm")
+# print(mySvm)
+# saveRDS(mySvm, "./mySvm.rds")
+# write.csv(RFModelEval, "RFModelEval.csv")
+# 
+# # TARGET is factor
+# svm_predict_100 <- predict(mySvm, results_train_Train, type = "response")
+# ROCRpred_svm100 <- prediction(as.numeric(svm_predict_100), results_train_Train$TARGET)
+# #predicition is a fucntion from package ROCR, predictTrain is our prediction fuction
+# #from above, qualityTrain$Poorcare is our TRUE OUTCOMES
+# ROCRperf_svm100 <- performance(ROCRpred_svm100, "tpr", "fpr")
+# #tpr - true positive rate, fpr - false positive rate, mapped to x and y axes
+# plot(ROCRperf_svm100, colorize = TRUE, print.cutoffs.at = seq(0,1,.1),
+#      text.adj = c(-0.2, 1.7), main = "Kvm 100% Train test on self")
+# predictTest_svm100 <- predict(mySvm, type = "response", newdata = results_train_Test)
+# table(results_train_Test$TARGET, predictTest_svm100)
+# ConfMat_svm100 <- table(results_train_Test$TARGET, predictTest_svm100)
+# ConfMat_svm100
+# RFModelEval[8,2] <- tictoc_SVM$tic - tictoc_SVM$toc
+# RFModelEval[8,3] <- ConfMat_svm60[2,2]/(ConfMat_svm60[2,2] + ConfMat_svm60[2,1])
+# RFModelEval[8,4] <- (ConfMat_svm60[1,1]+ConfMat_svm60[2,2]) / sum(ConfMat_svm60[1:2, 1:2])
+# View(RFModelEval)
+# saveRDS(mySvm, "./mySvm.rds")
+# write.csv(RFModelEval, "RFModelEval.csv")
+# 
+# 
+# 
+# 
+# #Random Forest
+# ##Segment train set into subets for performance comparison - 5 10 20 30 60 80
+# results_train_Train_05 <- results_train_Train[sample(nrow(results_train_Train),
+#                                                      nrow(results_train_Train) * 0.05), ]
+# write.csv(results_train_Train_05, "results_train_Train_05.csv")
+# 
+# results_train_Train_10 <- results_train_Train[sample(nrow(results_train_Train),
+#                                                      nrow(results_train_Train) * 0.1), ]
+# write.csv(results_train_Train_10, "results_train_Train_10.csv")
+# results_train_Train_20 <- results_train_Train[sample(nrow(results_train_Train),
+#                                                      nrow(results_train_Train) * 0.2), ]
+# write.csv(results_train_Train_20, "results_train_Train_20.csv")
+# results_train_Train_30 <- results_train_Train[sample(nrow(results_train_Train),
+#                                                      nrow(results_train_Train) * 0.3), ]
+# write.csv(results_train_Train_30, "results_train_Train_30.csv")
+# results_train_Train_60 <- results_train_Train[sample(nrow(results_train_Train),
+#                                                      nrow(results_train_Train) * 0.6), ]
+# write.csv(results_train_Train_60, "results_train_Train_60.csv")
+# results_train_Train_80 <- results_train_Train[sample(nrow(results_train_Train),
+#                                                      nrow(results_train_Train) * 0.8), ]
+# write.csv(results_train_Train_80, "results_train_Train_80.csv")
+# results_train_Train_100 <- results_train_Train[sample(nrow(results_train_Train),
+#                                                      nrow(results_train_Train)), ]
+# write.csv(results_train_Train_100, "results_train_Train_100.csv")
+# write.csv(results_train_Train, "results_train_Train.csv")
+# 
+# remove(results_train_Train_05)
+# remove(results_train_Train_10)
+# remove(results_train_Train_20)
+# remove(results_train_Train_30)
+# remove(results_train_Train_60)
+# remove(results_train_Train_80)
+# remove(results_train_Train_100)
+# remove(results_train_Train)
+# 
+# #load the libraries
+# library(randomForest)
+# library(tictoc)
+# library(ROCR)
+# 
+# #train the model
+# #start tictoc timer
+# results_train_Train_05 <- read.csv("results_train_Train_05.csv")[-1]
+# tic("05 percent")
+# #train model
+# rf_classifier_05 = randomForest(TARGET ~ ., data = results_train_Train_05, importance = TRUE)
+# #stop timer
+# tictoc_05 <- toc()
+# #write values to our performance evalation table
+# RFModelEval[1, 1] <- "5"
+# RFModelEval[1, 2] <- tictoc_05$toc - tictoc_05$tic
+# #test the model against the data on which it was trained
+# rf_predict_05 <- predict(rf_classifier_05, results_train_Train_05, type = "response")
+# #predicition is a fucntion from package ROCR, rf_predict_05 is our prediction fuction
+# #from above, results_train_Train_05$TARGET is our TRUE OUTCOMES
+# ROCRpred_05 <- prediction(as.numeric(rf_predict_05), as.numeric(results_train_Train_05$TARGET))
+# ROCRperf_05 <- performance(ROCRpred_05, "tpr", "fpr")
+# #tpr - true positive rate, fpr - false positive rate, mapped to x and y axes
+# plot(ROCRperf_05, colorize = TRUE, print.cutoffs.at = seq(0,1,.1), text.adj = c(-0.2, 1.7), main = "RF 5% Train test on self")
+# #Now run prediction on test set
+# predictTest_05 <- predict(rf_classifier_05, type = "response", newdata = results_train_Test)
+# table(results_train_Test$TARGET, predictTest_05)
+# #make a confusion matrix to compare predicted vs. actual on the TEST set
+# ConfMat_05 <- table(results_train_Test$TARGET, predictTest_05)
+# ConfMat_05
+# #And add performance stats to evlauation table
+# RFModelEval[1,3] <- ConfMat_05[2,2]/(ConfMat_05[2,2] + ConfMat_05[2,1])
+# RFModelEval[1,4] <- (ConfMat_05[1,1]+ConfMat_05[2,2]) / sum(ConfMat_05[1:2, 1:2])
+# View(RFModelEval)
+# saveRDS(rf_classifier_05, "./rf_classifier_05.rds")
+# write.csv(RFModelEval, "RFModelEval.csv")
+# remove(results_train_Train_05)
+# 
+# results_train_Train_10 <- read.csv("results_train_Train_10.csv")[-1]
+# tic("10 percent")
+# rf_classifier_10 = randomForest(data=results_train_Train_10, TARGET ~ .)
+# tictoc_10 <- toc()
+# RFModelEval[2, 1] <- "10"
+# RFModelEval[2, 2] <- tictoc_10$toc - tictoc_10$tic
+# rf_predict_10 <- predict(rf_classifier_10, results_train_Train_10, type = "response")
+# ROCRpred_10 <- prediction(as.numeric(rf_predict_10), as.numeric(results_train_Train_10$TARGET))
+# #predicition is a fucntion from package ROCR, predictTrain is our prediction fuction
+# #from above, qualityTrain$Poorcare is our TRUE OUTCOMES
+# ROCRperf_10 <- performance(ROCRpred_10, "tpr", "fpr")
+# #tpr - true positive rate, fpr - false positive rate, mapped to x and y axes
+# plot(ROCRperf_10, colorize = TRUE, print.cutoffs.at = seq(0,1,.1),
+#      text.adj = c(-0.2, 1.7), main = "RF 10% Train test on self")
+# predictTest_10 <- predict(rf_classifier_10, type = "response",
+#                           newdata = results_train_Test)
+# table(results_train_Test$TARGET, predictTest_10)
+# ConfMat_10 <- table(results_train_Test$TARGET, predictTest_10)
+# ConfMat_10
+# RFModelEval[2,3] <- ConfMat_10[2,2]/(ConfMat_10[2,2] + ConfMat_10[2,1])
+# RFModelEval[2,4] <- (ConfMat_10[1,1]+ConfMat_10[2,2]) / sum(ConfMat_10[1:2, 1:2])
+# View(RFModelEval)
+# saveRDS(rf_classifier_10, "./rf_classifier_10.rds")
+# write.csv(RFModelEval, "RFModelEval.csv")
+# remove(results_train_Train_10)
+# 
+# 
+# results_train_Train_20 <- read.csv("results_train_Train_20.csv")[-1]
+# tic("20 percent")
+# rf_classifier_20 = randomForest(data=results_train_Train_20, TARGET ~ .)
+# tictoc_20 <- toc()
+# RFModelEval[3, 1] <- "20"
+# RFModelEval[3, 2] <- tictoc_20$toc - tictoc_20$tic
+# rf_predict_20 <- predict(rf_classifier_20, results_train_Train_20)
+# ROCRpred_20 <- prediction(as.numeric(rf_predict_20), results_train_Train_20$TARGET)
+# ROCRperf_20 <- performance(ROCRpred_20, "tpr", "fpr")
+# #tpr - true positive rate, fpr - false positive rate, mapped to x and y axes
+# plot(ROCRperf_20, colorize = TRUE, print.cutoffs.at = seq(0,1,.1),
+#      text.adj = c(-0.2, 1.7), main = "RF 20% Train test on self")
+# predictTest_20 <- predict(rf_classifier_20, newdata = results_train_Test)
+# table(results_train_Test$TARGET, predictTest_20)
+# ConfMat_20 <- table(results_train_Test$TARGET, predictTest_20)
+# ConfMat_20
+# remove(results_train_Train_20)
+# 
+# #TEST is same as above but with TARGET as factor
+# results_train_Train_20 <- read.csv("results_train_Train_20.csv")[-1]
+# tic("20 percent TARGET AS FACTOR")
+# rf_classifier_20a = randomForest(data=results_train_Train_20, TARGET ~ .)
+# tictoc_20a <- toc()
+# RFModelEval[12, 1] <- "20 TARGET AS FACTOR"
+# RFModelEval[12, 2] <- tictoc_20a$toc - tic
+# rf_predict_20a <- predict(rf_classifier_20a, results_train_Train_20)
+# ROCRpred_20a <- prediction(as.numeric(rf_predict_20a), results_train_Train_20$TARGET)
+# #predicition is a fucntion from package ROCR, predictTrain is our prediction fuction
+# #from above, qualityTrain$Poorcare is our TRUE OUTCOMES
+# ROCRperf_20a <- performance(ROCRpred_20a, "tpr", "fpr")
+# plot(ROCRperf_20a, colorize = TRUE, print.cutoffs.at = seq(0,1,.1),
+#      text.adj = c(-0.2, 1.7), main = "RF 20% Train test on self TARGET AS FACTOR")
+# RFModelEval[12,3] <- ConfMat_20[2,2]/(ConfMat_20[2,2] + ConfMat_20[2,1])
+# RFModelEval[12,4] <- (ConfMat_20[1,1]+ConfMat_20[2,2]) / sum(ConfMat_20[1:2, 1:2])
+# View(RFModelEval)
+# saveRDS(rf_classifier_20, "./rf_classifier_20.rds")
+# write.csv(RFModelEval, "RFModelEval.csv")
+# remove(results_train_Train_20)
+# 
+# 
+# results_train_Train_30 <- read.csv("results_train_Train_30.csv")[-1]
+# tic("30 percent")
+# rf_classifier_30 = randomForest(data=results_train_Train_30, TARGET ~ .)
+# tictoc_30 <- toc()
+# RFModelEval[4, 1] <- "30"
+# RFModelEval[4, 2] <- tictoc_30$toc - tictoc_30$tic
+# rf_predict_30 <- predict(rf_classifier_30, results_train_Train_30, type = "response")
+# ROCRpred_30 <- prediction(as.numeric(rf_predict_30), as.numeric(results_train_Train_30$TARGET))
+# #predicition is a fucntion from package ROCR, predictTrain is our prediction fuction
+# #from above, qualityTrain$Poorcare is our TRUE OUTCOMES
+# ROCRperf_30 <- performance(ROCRpred_30, "tpr", "fpr")
+# #tpr - true positive rate, fpr - false positive rate, mapped to x and y axes
+# plot(ROCRperf_30, colorize = TRUE, print.cutoffs.at = seq(0,1,.1),
+#      text.adj = c(-0.2, 1.7), main = "RF 30% Train test on self")
+# predictTest_30 <- predict(rf_classifier_30, type = "response", newdata = results_train_Test)
+# table(results_train_Test$TARGET, predictTest_30)
+# ConfMat_30 <- table(results_train_Test$TARGET, predictTest_30)
+# ConfMat_30
+# RFModelEval[4,3] <- ConfMat_30[2,2]/(ConfMat_30[2,2] + ConfMat_30[2,1])
+# RFModelEval[4,4] <- (ConfMat_30[1,1]+ConfMat_30[2,2]) / sum(ConfMat_30[1:2, 1:2])
+# View(RFModelEval)
+# saveRDS(rf_classifier_30, "./rf_classifier_30.rds")
+# write.csv(RFModelEval, "RFModelEval.csv")
+# remove(results_train_Train_30)
+# 
+# 
+# results_train_Train_60 <- read.csv("results_train_Train_60.csv")[-1]
+# tic("60 percent")
+# rf_classifier_60 = randomForest(data=results_train_Train_60, TARGET ~ .)
+# tictoc_60 <- toc()
+# RFModelEval[5, 1] <- "60"
+# RFModelEval[5, 2] <- tictoc_60$toc - tictoc_60$tic
+# rf_predict_60 <- predict(rf_classifier_60, results_train_Train_60, type = "response")
+# ROCRpred_60 <- prediction(as.numeric(rf_predict_60), as.numeric(results_train_Train_60$TARGET))
+# #predicition is a fucntion from package ROCR, predictTrain is our prediction fuction
+# #from above, qualityTrain$Poorcare is our TRUE OUTCOMES
+# ROCRperf_60 <- performance(ROCRpred_60, "tpr", "fpr")
+# #tpr - true positive rate, fpr - false positive rate, mapped to x and y axes
+# plot(ROCRperf_60, colorize = TRUE, print.cutoffs.at = seq(0,1,.1),
+#      text.adj = c(-0.2, 1.7), main = "RF 60% Train test on self")
+# predictTest_60 <- predict(rf_classifier_60, type = "response", newdata = results_train_Test)
+# table(results_train_Test$TARGET, predictTest_60)
+# ConfMat_60 <- table(results_train_Test$TARGET, predictTest_60)
+# ConfMat_60
+# RFModelEval[5,3] <- ConfMat_60[2,2]/(ConfMat_60[2,2] + ConfMat_60[2,1])
+# RFModelEval[5,4] <- (ConfMat_60[1,1]+ConfMat_60[2,2]) / sum(ConfMat_60[1:2, 1:2])
+# View(RFModelEval)
+# saveRDS(rf_classifier_60, "./rf_classifier_60.rds")
+# write.csv(RFModelEval, "RFModelEval.csv")
+# remove(results_train_Train_60)
+# 
+# 
+# 
+# tic("80 percent")
+# results_train_Train_80 <- read.csv("results_train_Train_80.csv")[-1]
+# rf_classifier_80 = randomForest(data=results_train_Train_80, TARGET ~ .)
+# tictoc_80 <- toc()
+# RFModelEval[6, 1] <- "80"
+# RFModelEval[6, 2] <- tictoc_80$toc - tictoc_80$tic
+# rf_predict_80 <- predict(rf_classifier_80, results_train_Train_80, type = "response")
+# ROCRpred_80 <- prediction(as.numeric(rf_predict_80), as.numeric(results_train_Train_80$TARGET))
+# #predicition is a fucntion from package ROCR, predictTrain is our prediction fuction
+# #from above, qualityTrain$Poorcare is our TRUE OUTCOMES
+# ROCRperf_80 <- performance(ROCRpred_80, "tpr", "fpr")
+# #tpr - true positive rate, fpr - false positive rate, mapped to x and y axes
+# plot(ROCRperf_80, colorize = TRUE, print.cutoffs.at = seq(0,1,.1),
+#      text.adj = c(-0.2, 1.7), main = "RF 80% Train test on self")
+# predictTest_80 <- predict(rf_classifier_80, type = "response", newdata = results_train_Test)
+# table(results_train_Test$TARGET, predictTest_80)
+# ConfMat_80 <- table(results_train_Test$TARGET, predictTest_80)
+# ConfMat_80
+# RFModelEval[6,3] <- ConfMat_80[2,2]/(ConfMat_80[2,2] + ConfMat_80[2,1])
+# RFModelEval[6,4] <- (ConfMat_80[1,1]+ConfMat_80[2,2]) / sum(ConfMat_80[1:2, 1:2])
+# View(RFModelEval)
+# saveRDS(rf_classifier_80, "./rf_classifier_80.rds")
+# write.csv(RFModelEval, "RFModelEval.csv")
+# remove(results_train_Train_80)
+# 
+# results_train_Train_100 <- read.csv("results_train_Train_100")[-1]
+# tic("100 percent")
+# rf_classifier_100 = randomForest(data=results_train_Train_100, TARGET ~ .)
+# tictoc_100 <- toc()
+# RFModelEval[7, 1] <- "100"
+# RFModelEval[7, 2] <- tictoc_100$toc - tictoc_100$tic
+# rf_predict_100 <- predict(rf_classifier_100, results_train_Train_100, type = "response")
+# ROCRpred_100 <- prediction(as.numeric(rf_predict_100), as.numeric(results_train_Train_100$TARGET))
+# #predicition is a fucntion from package ROCR, predictTrain is our prediction fuction
+# #from above, qualityTrain$Poorcare is our TRUE OUTCOMES
+# ROCRperf_100 <- performance(ROCRpred_100, "tpr", "fpr")
+# #tpr - true positive rate, fpr - false positive rate, mapped to x and y axes
+# plot(ROCRperf_100, colorize = TRUE, print.cutoffs.at = seq(0,1,.1),
+#      text.adj = c(-0.2, 1.7), main = "RF 100% Train test on self")
+# predictTest_100 <- predict(rf_classifier_100, type = "response", newdata = results_train_Test)
+# table(results_train_Test$TARGET, predictTest_100)
+# ConfMat_100 <- table(results_train_Test$TARGET, predictTest_100)
+# ConfMat_100
+# RFModelEval[7,3] <- ConfMat_100[2,2]/(ConfMat_100[2,2] + ConfMat_100[2,1])
+# RFModelEval[7,4] <- (ConfMat_100[1,1]+ConfMat_100[2,2]) / sum(ConfMat_100[1:2, 1:2])
+# View(RFModelEval)
+# saveRDS(rf_classifier_100, "./rf_classifier_100.rds")
+# write.csv(RFModelEval, "RFModelEval.csv")
+# remove(results_train_Train)
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# ##OTHER FUNCTIONS
+# 
+# # #Look for NAs
+# # na_count <- data.frame("Num_NAs" = sapply(application_all, function(y) sum(length(which(is.na(y))))))
+# # na_count$percent_NAs <- as.integer(100 * na_count$Num_NAs / nrow(application_all))
+# # View(na_count)
+# 
+# # 
+# # #The following creates a df that shows that all major outliers for
+# # #days_employed are pensioners, and a few unemplyed
+# # outliers_emp <- data.frame(filter(application_all, DAYS_EMPLOYED > 10000))
+# # View(outliers_emp)
+# # 
+# # 
+# # #plot something
+# # ggplot(results_train, aes(x = factor(TARGET))) +
+# #   geom_bar(stat = "count")
+# # ggplot(results_train, aes(x = LOAN_TYPE )) +
+# #   geom_bar(stat = "count")
+# # ggplot(results_train, aes(x = AGE)) +
+# #   geom_histogram(stat = "bin", bins = 20)
+# # ggplot(results_train, aes(x = GENDER)) +
+# #   geom_bar(stat = "count")
+# # ggplot(results_train, aes(x = OWNS_CAR)) +
+# #   geom_bar(stat = "count")
+# # ggplot(results_train, aes(x = AGE_OF_CAR)) +
+# #   geom_histogram(stat = "bin", binwidth = 2.5)
+# # ggplot(results_train, aes(x = OWNS_REALTY)) +
+# #   geom_bar(stat = "count")
+# # ggplot(results_train, aes(x = factor(CHILDREN))) +
+# #   geom_bar(stat = "count")
+# # ggplot(results_train, aes(x = TOTAL_INCOME)) +
+# #   scale_x_log10(breaks=c(1e+5,1e+6)) +
+# #   xlim(0, 1e+6) +
+# #   geom_histogram(bins = 20)
+# # # add limit
+# # ggplot(results_train, aes(x = LOAN_AMOUNT)) +
+# #   geom_histogram(stat = "bin")
+# # 
+# # ggplot(results_train, aes(x = PAYMENT_AMOUNT)) +
+# #   geom_histogram(stat = "bin")
+# # 
+# # # add limit
+# # ggplot(results_train, aes(x = PURCHASE_PRICE_OF_GOODS)) +
+# #   geom_histogram(stat = "bin")
+# # ggplot(results_train, aes(x = RATIO_LOAN_TO_ANNUITY)) +
+# #   geom_histogram()
+# # ggplot(results_train, aes(x = INCOME_TYPE)) +
+# #   geom_bar(stat = "count") +
+# #   theme(axis.text.x = element_text(angle = 90, hjust = 1))
+# # # ADD OTHER CATEGORY FOR LOW SAMPLES
+# # ggplot(results_train, aes(x = EDUCATION)) +
+# #   geom_bar(stat = "count")
+# # ggplot(results_train, aes(x = MARITAL_STATUS)) +
+# #   geom_bar(stat = "count")
+# # ggplot(results_train, aes(x = HOUSING_STATUS)) +
+# #   geom_bar(stat = "count")
+# # ggplot(results_train, aes(x = YEARS_AT_CURRENT_JOB)) +
+# #   geom_histogram(binwidth = 2)
+# # #MAKE THE OUTLIERS = 0
+# # ggplot(results_train, aes(x = EMPLOYER_TYPE)) +
+# #   geom_bar(stat = "count")
+# # #SORT ACCORDING TO NUMBER OF SAMPLES, AND THEN GROUP LOW-OCCURRING CATEGORIES
+# # ggplot(results_train, aes(x = YEARS_SINCE_GETTING_IDENTITY_DOCUMENT)) +
+# #   geom_histogram()
+# # ggplot(results_train, aes(x = REGION_AND_CITY_RATING)) +
+# #   geom_bar(stat = "count")
+# # 
+# # 
+# # #results <- add_column(summarise(bureau_grouped_ID, max(CREDIT_DAY_OVERDUE)))
+# # 
+# # # finalData<-subset(data,!(is.na(data["mmul"]) | is.na(data["rnor"]))) - use to remove rows with no TARGET value
+# # # use merge to combine the test and train sets?
+# # ggplot(results_train, aes(factor(TARGET),
+# #            AGE)) +
+# #   geom_jitter( alpha = .05)  +
+# #   geom_boxplot( alpha = .5, color = "blue")+
+# #   stat_summary(fun.y = "mean",
+# #                geom = "point",
+# #                color = "red",
+# #                shape = 8,
+# #                size = 4)
+# # 
+# # ggplot(results_train) + 
+# #   geom_bar(aes(GENDER, TARGET), 
+# #            position = "dodge", stat = "summary", fun.y = "mean")
+# 
+# # test <- data.frame(a = as.factor(1:3), b = as.factor(4:6))
+# # test <- cbind(test, as.data.frame(model.matrix(~test$a)))
+# # test <- cbind(test, as.data.frame(model.matrix(~test$b)))
+# # test$`(Intercept)` <- NULL
+# # test$`(Intercept)` <- NULL
+# # test$a <- NULL
+# # test$b <- NULL
+# # test
