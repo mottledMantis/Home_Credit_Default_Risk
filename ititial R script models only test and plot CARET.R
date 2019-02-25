@@ -56,8 +56,6 @@ names(RFModelEval) <- c(
   "AUC Score",
   "Specificity: (TN/N)",
   "Precision: TP/(TP+FP)",
-  "ntree",
-  "mtry",
   "Comment"
 )
 
@@ -117,59 +115,7 @@ write.csv(RFModelEval, "./assets/RFModelEval2.csv")
 remove(this.Model)
 
 r <- r + 1
-# 
-# #Simple Tree
-# library(rpart)
-# 
-# this.Model <- readRDS("./assets/myTree.rds")
-# RFModelEvalIndex = r
-# 
-# predictTest <-
-#   predict(this.Model, newdata = results_train_Test, type = "class")
-# 
-# confMat <- table(results_train_Test$TARGET, predictTest)
-# confMat <- confMat[c(2,1) , c(2,1)]
-# write.csv(confMat, "./assets/confTree.csv")
-# 
-# RFModelEval[RFModelEvalIndex, 3] <- confMat[1, 1] / (confMat[1, 1] + confMat[1, 2])
-# RFModelEval[RFModelEvalIndex, 4] <-
-#   (confMat[1, 1] + confMat[2, 2]) / sum(confMat[1:2, 1:2])
-# RFModelEval[RFModelEvalIndex, 6] <- confMat[2, 2] / (confMat[2, 2] + confMat[1, 2])
-# RFModelEval[RFModelEvalIndex, 7] <- confMat[1, 1] / (confMat[1, 1] + confMat[2, 1])
-# 
-# #TP FN
-# #FP TN
-# 
-# #Now run prediction on test set
-# ROCRpred_TEST <- prediction(as.numeric(predictTest), results_train_Test$TARGET)
-# #predicition is a fucntion from package ROCR, predictTrain is our prediction fuction
-# #from above, results_train_Train$TARGET is our TRUE OUTCOMES
-# ROCRperf_TEST <- performance(ROCRpred_TEST, "tpr", "fpr")
-# attributes(ROCRperf_TEST)$alpha.values[[1]][1] <- 1
-# 
-# auc.tmp <-
-#   performance(ROCRpred_TEST, "auc")
-# RFModelEval[RFModelEvalIndex, 5] <- as.numeric(auc.tmp@y.values)
-# 
-# perfMin <- min(unlist(ROCRperf_TEST@alpha.values))
-# perfMax <- max(unlist(ROCRperf_TEST@alpha.values))
-# png('./assets/rf_Tree_TEST.png', width = 600, height = 600)
-# ROCR::plot(
-#   ROCRperf_TEST,
-#   colorize = TRUE,
-#   lwd = 3,
-#   print.cutoffs.at = seq(perfMin,
-#                          perfMax,
-#                          (perfMax - perfMin)/50),
-#   text.adj = c(-0.2, 1.7),
-#   main = "Simple Tree 100% on TEST"
-# )
-# abline(a = 0, b = 1, lwd = 3, col = "black")
-# dev.off()
-# write.csv(RFModelEval, "./assets/RFModelEval2.csv")
-# remove(this.Model)
-# 
-# r <- r + 1
+
 
 
 #naive bayes
@@ -279,110 +225,110 @@ remove(this.Model)
 
 r <- r + 1
 
-#support vector machine
-library(e1071)
-
-this.Model <- readRDS("./assets/mySvm.rds")
-RFModelEvalIndex = r
-
-predictTest <-
-  predict(this.Model, newdata = results_train_Test, type = "class")
-
-confMat <- table(results_train_Test$TARGET, predictTest)
-confMat <- confMat[c(2,1) , c(2,1)]
-write.csv(confMat, "./assets/confSvm.csv")
-
-RFModelEval[RFModelEvalIndex, 3] <- confMat[1, 1] / (confMat[1, 1] + confMat[1, 2])
-RFModelEval[RFModelEvalIndex, 4] <-
-  (confMat[1, 1] + confMat[2, 2]) / sum(confMat[1:2, 1:2])
-RFModelEval[RFModelEvalIndex, 6] <- confMat[2, 2] / (confMat[2, 2] + confMat[1, 2])
-RFModelEval[RFModelEvalIndex, 7] <- confMat[1, 1] / (confMat[1, 1] + confMat[2, 1])
-#TP FN
-#FP TN
-
-#Now run prediction on test set
-ROCRpred_TEST <- prediction(as.numeric(predictTest), (results_train_Test$TARGET))
-#predicition is a fucntion from package ROCR, predictTrain is our prediction fuction
-#from above, results_train_Train$TARGET is our TRUE OUTCOMES
-ROCRperf_TEST <- performance(ROCRpred_TEST, "tpr", "fpr")
+# #support vector machine
+# library(e1071)
+# 
+# this.Model <- readRDS("./assets/mySvm.rds")
+# RFModelEvalIndex = r
+# 
+# predictTest <-
+#   predict(this.Model, newdata = results_train_Test, type = "class")
+# 
+# confMat <- table(results_train_Test$TARGET, predictTest)
+# confMat <- confMat[c(2,1) , c(2,1)]
+# write.csv(confMat, "./assets/confSvm.csv")
+# 
+# RFModelEval[RFModelEvalIndex, 3] <- confMat[1, 1] / (confMat[1, 1] + confMat[1, 2])
+# RFModelEval[RFModelEvalIndex, 4] <-
+#   (confMat[1, 1] + confMat[2, 2]) / sum(confMat[1:2, 1:2])
+# RFModelEval[RFModelEvalIndex, 6] <- confMat[2, 2] / (confMat[2, 2] + confMat[1, 2])
+# RFModelEval[RFModelEvalIndex, 7] <- confMat[1, 1] / (confMat[1, 1] + confMat[2, 1])
+# #TP FN
+# #FP TN
+# 
+# #Now run prediction on test set
+# ROCRpred_TEST <- prediction(as.numeric(predictTest), (results_train_Test$TARGET))
+# #predicition is a fucntion from package ROCR, predictTrain is our prediction fuction
+# #from above, results_train_Train$TARGET is our TRUE OUTCOMES
+# ROCRperf_TEST <- performance(ROCRpred_TEST, "tpr", "fpr")
+# # attributes(ROCRperf_TEST)$alpha.values[[1]][1] <- 1
+# 
+# auc.tmp <-
+#   performance(ROCRpred_TEST, "auc")
+# RFModelEval[RFModelEvalIndex, 5] <- as.numeric(auc.tmp@y.values)
+# 
+# # perfMin <- min(unlist(ROCRperf_TEST@alpha.values))
+# # perfMax <- max(unlist(ROCRperf_TEST@alpha.values))
+# png('./assets/rf_svm_TEST.png', width = 600, height = 600)
+# ROCR::plot(
+#   ROCRperf_TEST,
+#   colorize = TRUE,
+#   lwd = 3,
+#   print.cutoffs.at = seq(0,
+#                          1,
+#                          0.1),
+#   text.adj = c(-0.2, 1.7),
+#   main = "Support Vector Machine 100% on TEST"
+# )
+# abline(a = 0, b = 1, lwd = 3, col = "black")
+# dev.off()
+# write.csv(RFModelEval, "./assets/RFModelEval2.csv")
+# remove(this.Model)
+# 
+# r <- r + 1
+# 
+# #XGBoost
+# this.Model <- readRDS("./assets/myXGB.rds")
+# RFModelEvalIndex = r
+# data.temp <- results_train_Test
+# data.temp$TARGET <- as.integer(data.temp$TARGET)
+# 
+# predictTest <-
+#   predict(this.Model, newdata = xgb.DMatrix(as.matrix(data.temp)))
+# 
+# confMat <- table(results_train_Test$TARGET, c(predictTest > .5))
+# confMat <- confMat[c(2,1) , c(2,1)]
+# write.csv(confMat, "./assets/confXGB.csv")
+# 
+# RFModelEval[RFModelEvalIndex, 3] <- confMat[1, 1] / (confMat[1, 1] + confMat[1, 2])
+# RFModelEval[RFModelEvalIndex, 4] <-
+#   (confMat[1, 1] + confMat[2, 2]) / sum(confMat[1:2, 1:2])
+# RFModelEval[RFModelEvalIndex, 6] <- confMat[2, 2] / (confMat[2, 2] + confMat[1, 2])
+# RFModelEval[RFModelEvalIndex, 7] <- confMat[1, 1] / (confMat[1, 1] + confMat[2, 1])
+# #TP FN
+# #FP TN
+# 
+# #Now run prediction on test set
+# ROCRpred_TEST <- prediction(as.numeric(predictTest), results_train_Test$TARGET)
+# #predicition is a fucntion from package ROCR, predictTrain is our prediction fuction
+# #from above, results_train_Train$TARGET is our TRUE OUTCOMES
+# ROCRperf_TEST <- performance(ROCRpred_TEST, "tpr", "fpr")
 # attributes(ROCRperf_TEST)$alpha.values[[1]][1] <- 1
-
-auc.tmp <-
-  performance(ROCRpred_TEST, "auc")
-RFModelEval[RFModelEvalIndex, 5] <- as.numeric(auc.tmp@y.values)
-
+# 
+# auc.tmp <-
+#   performance(ROCRpred_TEST, "auc")
+# RFModelEval[RFModelEvalIndex, 5] <- as.numeric(auc.tmp@y.values)
+# 
 # perfMin <- min(unlist(ROCRperf_TEST@alpha.values))
 # perfMax <- max(unlist(ROCRperf_TEST@alpha.values))
-png('./assets/rf_svm_TEST.png', width = 600, height = 600)
-ROCR::plot(
-  ROCRperf_TEST,
-  colorize = TRUE,
-  lwd = 3,
-  print.cutoffs.at = seq(0,
-                         1,
-                         0.1),
-  text.adj = c(-0.2, 1.7),
-  main = "Support Vector Machine 100% on TEST"
-)
-abline(a = 0, b = 1, lwd = 3, col = "black")
-dev.off()
-write.csv(RFModelEval, "./assets/RFModelEval2.csv")
-remove(this.Model)
-
-r <- r + 1
-
-#XGBoost
-this.Model <- readRDS("./assets/myXGB.rds")
-RFModelEvalIndex = r
-data.temp <- results_train_Test
-data.temp$TARGET <- as.integer(data.temp$TARGET)
-
-predictTest <-
-  predict(this.Model, newdata = xgb.DMatrix(as.matrix(data.temp)))
-
-confMat <- table(results_train_Test$TARGET, c(predictTest > .5))
-confMat <- confMat[c(2,1) , c(2,1)]
-write.csv(confMat, "./assets/confXGB.csv")
-
-RFModelEval[RFModelEvalIndex, 3] <- confMat[1, 1] / (confMat[1, 1] + confMat[1, 2])
-RFModelEval[RFModelEvalIndex, 4] <-
-  (confMat[1, 1] + confMat[2, 2]) / sum(confMat[1:2, 1:2])
-RFModelEval[RFModelEvalIndex, 6] <- confMat[2, 2] / (confMat[2, 2] + confMat[1, 2])
-RFModelEval[RFModelEvalIndex, 7] <- confMat[1, 1] / (confMat[1, 1] + confMat[2, 1])
-#TP FN
-#FP TN
-
-#Now run prediction on test set
-ROCRpred_TEST <- prediction(as.numeric(predictTest), results_train_Test$TARGET)
-#predicition is a fucntion from package ROCR, predictTrain is our prediction fuction
-#from above, results_train_Train$TARGET is our TRUE OUTCOMES
-ROCRperf_TEST <- performance(ROCRpred_TEST, "tpr", "fpr")
-attributes(ROCRperf_TEST)$alpha.values[[1]][1] <- 1
-
-auc.tmp <-
-  performance(ROCRpred_TEST, "auc")
-RFModelEval[RFModelEvalIndex, 5] <- as.numeric(auc.tmp@y.values)
-
-perfMin <- min(unlist(ROCRperf_TEST@alpha.values))
-perfMax <- max(unlist(ROCRperf_TEST@alpha.values))
-png('./assets/rf_XGB_TEST.png', width = 600, height = 600)
-ROCR::plot(
-  ROCRperf_TEST,
-  colorize = TRUE,
-  lwd = 3,
-  print.cutoffs.at = seq(perfMin,
-                         perfMax,
-                         (perfMax - perfMin)/10),
-  text.adj = c(-0.2, 1.7),
-  main = "Xtreme Gradient Boost 100% on TEST"
-)
-abline(a = 0, b = 1, lwd = 3, col = "black")
-dev.off()
-write.csv(RFModelEval, "./assets/RFModelEval2.csv")
-remove(this.Model)
-
-
-r <- r + 1
+# png('./assets/rf_XGB_TEST.png', width = 600, height = 600)
+# ROCR::plot(
+#   ROCRperf_TEST,
+#   colorize = TRUE,
+#   lwd = 3,
+#   print.cutoffs.at = seq(perfMin,
+#                          perfMax,
+#                          (perfMax - perfMin)/10),
+#   text.adj = c(-0.2, 1.7),
+#   main = "Xtreme Gradient Boost 100% on TEST"
+# )
+# abline(a = 0, b = 1, lwd = 3, col = "black")
+# dev.off()
+# write.csv(RFModelEval, "./assets/RFModelEval2.csv")
+# remove(this.Model)
+# 
+# 
+# r <- r + 1
 
 #Random Forest
 
@@ -698,53 +644,53 @@ remove(this.Model)
 
 r <- r + 1
 
-
-#Random Forest Trained on 100% of train data
-this.Model <- readRDS("./assets/rf_classifier_100.rds")
-RFModelEvalIndex = r
-
-predictTest <-
-  predict(this.Model, newdata = results_train_Test, type = "prob")
-
-confMat <- table(results_train_Test$TARGET, predictTest[,2] > .5)
-confMat <- confMat[c(2,1) , c(2,1)]
-write.csv(confMat, "./assets/confRF100.csv")
-
-RFModelEval[RFModelEvalIndex, 3] <- confMat[1, 1] / (confMat[1, 1] + confMat[1, 2])
-RFModelEval[RFModelEvalIndex, 4] <-
-  (confMat[1, 1] + confMat[2, 2]) / sum(confMat[1:2, 1:2])
-RFModelEval[RFModelEvalIndex, 6] <- confMat[2, 2] / (confMat[2, 2] + confMat[1, 2])
-RFModelEval[RFModelEvalIndex, 7] <- confMat[1, 1] / (confMat[1, 1] + confMat[2, 1])
-#TP FN
-#FP TN
-
-#Now run prediction on test set
-ROCRpred_TEST <- prediction(predictTest[,2], results_train_Test$TARGET)
-#predicition is a fucntion from package ROCR, predictTrain is our prediction fuction
-#from above, results_train_Train$TARGET is our TRUE OUTCOMES
-ROCRperf_TEST <- performance(ROCRpred_TEST, "tpr", "fpr")
-attributes(ROCRperf_TEST)$alpha.values[[1]][1] <- 1
-
-auc.tmp <-
-  performance(ROCRpred_TEST, "auc")
-RFModelEval[RFModelEvalIndex, 5] <- as.numeric(auc.tmp@y.values)
-
-perfMin <- min(unlist(ROCRperf_TEST@alpha.values))
-perfMax <- max(unlist(ROCRperf_TEST@alpha.values))
-png('./assets/rf_RF100_TEST.png', width = 600, height = 600)
-ROCR::plot(
-  ROCRperf_TEST,
-  colorize = TRUE,
-  lwd = 3,
-  print.cutoffs.at = seq(0,
-                         1,
-                         .1),
-  text.adj = c(-0.2, 1.7),
-  main = "Random Forest 100% on TEST"
-)
-abline(a = 0, b = 1, lwd = 3, col = "black")
-dev.off()
-write.csv(RFModelEval, "./assets/RFModelEval2.csv")
-remove(this.Model)
-
-r <- r + 1
+# 
+# #Random Forest Trained on 100% of train data
+# this.Model <- readRDS("./assets/rf_classifier_100.rds")
+# RFModelEvalIndex = r
+# 
+# predictTest <-
+#   predict(this.Model, newdata = results_train_Test, type = "prob")
+# 
+# confMat <- table(results_train_Test$TARGET, predictTest[,2] > .5)
+# confMat <- confMat[c(2,1) , c(2,1)]
+# write.csv(confMat, "./assets/confRF100.csv")
+# 
+# RFModelEval[RFModelEvalIndex, 3] <- confMat[1, 1] / (confMat[1, 1] + confMat[1, 2])
+# RFModelEval[RFModelEvalIndex, 4] <-
+#   (confMat[1, 1] + confMat[2, 2]) / sum(confMat[1:2, 1:2])
+# RFModelEval[RFModelEvalIndex, 6] <- confMat[2, 2] / (confMat[2, 2] + confMat[1, 2])
+# RFModelEval[RFModelEvalIndex, 7] <- confMat[1, 1] / (confMat[1, 1] + confMat[2, 1])
+# #TP FN
+# #FP TN
+# 
+# #Now run prediction on test set
+# ROCRpred_TEST <- prediction(predictTest[,2], results_train_Test$TARGET)
+# #predicition is a fucntion from package ROCR, predictTrain is our prediction fuction
+# #from above, results_train_Train$TARGET is our TRUE OUTCOMES
+# ROCRperf_TEST <- performance(ROCRpred_TEST, "tpr", "fpr")
+# attributes(ROCRperf_TEST)$alpha.values[[1]][1] <- 1
+# 
+# auc.tmp <-
+#   performance(ROCRpred_TEST, "auc")
+# RFModelEval[RFModelEvalIndex, 5] <- as.numeric(auc.tmp@y.values)
+# 
+# perfMin <- min(unlist(ROCRperf_TEST@alpha.values))
+# perfMax <- max(unlist(ROCRperf_TEST@alpha.values))
+# png('./assets/rf_RF100_TEST.png', width = 600, height = 600)
+# ROCR::plot(
+#   ROCRperf_TEST,
+#   colorize = TRUE,
+#   lwd = 3,
+#   print.cutoffs.at = seq(0,
+#                          1,
+#                          .1),
+#   text.adj = c(-0.2, 1.7),
+#   main = "Random Forest 100% on TEST"
+# )
+# abline(a = 0, b = 1, lwd = 3, col = "black")
+# dev.off()
+# write.csv(RFModelEval, "./assets/RFModelEval2.csv")
+# remove(this.Model)
+# 
+# r <- r + 1
