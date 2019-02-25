@@ -1,0 +1,735 @@
+---
+title: 'Home Credit: Final Report'
+author: "James Matheson"
+date: "February 24, 2019"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(jpeg)
+library(imager)
+library(ROCR)
+library(tidyverse)
+library(knitr)
+library(ggplot2)
+library(png)
+library(GGally)
+library(gridExtra)
+library(fastDummies)
+library(nortest)
+results_train <- read_csv("results_graphs.csv")
+results_dummy_train <- read_csv("results_dummy_train.csv")
+
+#Fix NAs
+results_train <- filter(results_train, is.na(results_train$TARGET) == FALSE)
+
+
+RFModelEval <- as.data.frame(read.csv('./assets/RFModelEval2.csv', stringsAsFactors = FALSE))[-1]
+names(RFModelEval) <- c(
+  "Pct of train data used and model type",
+  "Training time in seconds",
+  "Sensitivity: TP/(TP+FN)",
+  "Accuracy: (TP+TN)/N",
+  "AUC Score",
+  "Specificity: (TN/N)",
+  "Precision: TP/(TP+FP)",
+  "Comment"
+)
+RFModelEval[is.na(RFModelEval)] = 0
+RFModelEval_sm <- RFModelEval
+# RFModelEval_sm <- RFModelEval[c(1:8, 10, 11, 13:16), ]
+```
+
+#Introduction
+#Assessing the Problem
+  Traditionally, borrowing costs have been tied to creditors' assessment of credit default risk based on simple, but broad financial criteria. Unfortunately, this leaves many potential borrowers out of the market, or paying higher interest rates. Conversely, these same criteria may not always be sufficient to redudce default risk by clients who may meet the criteria, but may eventually default because of other, potentially forseeable, reasons not sufficiently accounted for in the criteria.
+
+#Client Solution
+  Using historical client credit data, I will create a Machine Laerning model capable of predicting, as accurately as possible, an individual applicants's liklihood of defaulting. This model can then be used by Home Creidt to make more refined decisions as to whom they offer loans, the types of loans offered and the interest terms.
+
+#Steps Taken
+  1. Cleaned and merged the "train" data to get a single data frame for incorporation in ML algorythms;
+  2. Examined the data using P-tests to determine significant features for incorporation into the ML algorhythms;
+  3. Reserved 80% of the training data for training the algorythms and 20% for testing
+  4. Using Caret package, trained several different models:
+    a. General Linear Model, using 100% of the apportioned train data
+    b. Naive Bayes model, using 100% of the apportioned train data
+      c. K Nearest Neighbor Model, using 100% of the apportioned train data
+  d. Random Forest Model, with the data segmented into 5%, 10%, 20%, 30%, 60% and 80% groups for comparision, and as a check against overfitting
+  
+  5. Used visualization tools to deomonstrate these correlations and the accuracy of the model.
+  
+#Data Cleanup and Feature Selection
+  
+  1) I examined P values for each potential feature vs. TARGET to assist in determining its releavance and significance for use in ML models;
+  2) I used a correlation chart to determine highly correlated (and therefore redundant) features for removal so that they won't be overrepresenated in the ML trainers at later steps;
+  4) I supplied a plot for each variable that demonstrates simple counts for each categorical variable or binned continuous variable;
+  5) I supplied a plot demonstrating the significance of each variable to the TARGET variable;
+  6) I supplied summary statistical information for each variable;
+- for continuous features, I used the Shapiro-Wilks Test (shapiro.test())to test for distributive normality;
+- upon finding that my continous features are not normally distriubted, I applied the Wilcoxon Rank Sum Test (wilcox.test()) as the t-test assumption of normality is not met.
+
+
+#Correlation matrix with ONLY correlation values > .6
+  The full correlation matrix for the features of this data set is too large to legibly display. Therefore a simplified correlation matrix follows, which displays ONLY correlation values between features that are greater than 0.6.
+  
+  Based on this correlation matrix, I removed three features from the model: 
+INCOME_TYPE_GROUPEDPensioner, EMPLOYER_TYPE_GROUPEDXNA, and EDUCATIONHigher_education
+
+```{r correlation chart filtered, echo=FALSE}
+
+cc <- results_dummy_train
+cc <- cor(cc)
+
+threshold <- 0.7
+cc0 <- cc
+diag(cc0) <- 0
+ok <- apply(abs(cc0) >= threshold, 1, any)
+c_matrix <- cc[ok, ok]
+
+#now remove the empty columns and rows
+n <- nrow(c_matrix)
+
+while (n > 0) {
+  if (sum(c_matrix[n,], na.rm = TRUE) == 0 && sum(c_matrix[,n], na.rm = TRUE) == 0 )
+  {
+c_matrix <- c_matrix[-n,]
+c_matrix <- c_matrix[,-n]
+  }
+  n <- n - 1
+}
+
+ggcorr(data = NULL, cor_matrix = c_matrix, nbreaks = 8, palette = "RdGy", label = TRUE, label_size = 4, label_color = "white", legend.position = "bottom", layout.exp = 10, nudge_x = -5)
+```
+
+
+
+
+##Summary of P values for each feature
+The following table of p values will be used for final feature selection in our ML models
+
+
+```{r echo = FALSE}
+print(summary(glm(formula = TARGET ~ ., family = "binomial", data = results_train)))
+```
+
+#The overall distribution of the Target is represented in the following plot
+  The following plot displays a simple distribution of our TARGET values. TARGET = 1 means that the sample had some problem repaying their load. TARGET = 0 means that the sample successfully repaid their load without issue.
+
+  Note that because the TARGET data is highly unbalanced, I downsampled the data sets when training each model.
+
+```{r target, echo=FALSE, warning=FALSE, comment = NA}
+ggplot(results_train, aes(x=as.factor(TARGET))) +
+  geom_histogram(stat = "count", aes(y=..count../sum(..count..)))
+count(results_train, TARGET)
+```
+
+
+#Feature Significance
+  The following statistics and plots demonstrate both simple counts for each feature, as well as the significance of each feature to our ML models.
+
+  Of particlar note are the "Signif. codes:  0 *** 0.001 ** 0.01 * 0.05 . 0.1   1" which demonstrate the significance of the feature based on its P-value.
+
+
+##Loan Type and Loan Type v. Target
+
+```{r loan_type, echo=FALSE, warning=FALSE, comment = NA, comment = NA}
+grid.arrange(ggplot(results_train, aes(x = LOAN_TYPE, fill = LOAN_TYPE)) +
+               geom_bar(stat = "count")
+             + theme(legend.position="none"),
+             ggplot(results_train, aes(LOAN_TYPE, TARGET, fill = LOAN_TYPE)) +
+               geom_bar(position = "dodge", stat = "summary", fun.y = "mean")
+             + theme(legend.position="none")
+             )
+count(results_train, LOAN_TYPE)
+mylogit_LOAN_TYPE <- glm(TARGET ~ LOAN_TYPE, results_train, family = "binomial")
+
+summary(mylogit_LOAN_TYPE)
+```
+
+## Age and Age v. Target
+
+```{r age, echo=FALSE, warning=FALSE, comment = NA}
+grid.arrange(ggplot(results_train, aes(x = AGE)) +
+               geom_histogram(stat = "bin", bins = 20, col = "grey", fill = "blue"),
+             ggplot(results_train, aes(factor(TARGET), AGE, fill = AGE)) +
+               geom_jitter( alpha = .05)  +
+               theme(legend.position="none") +
+               stat_summary(fun.y = "mean", geom = "point", color = "red", shape = 8, size = 4)
+             )
+summary(results_train$AGE)
+# Anderson Darling Test
+ad.test(results_train$AGE)
+wilcox.test(AGE ~ TARGET, data = results_train)
+```
+
+## Gender and Gender v. Target
+Note that, becsuse the number of XNA values for gender was extermely low (total count of 4), they have been removed in the following.
+
+```{r gender, echo=FALSE, warning=FALSE, comment = NA}
+results_train$GENDER <- as.factor(results_train$GENDER)
+results_train$GENDER[results_train$GENDER == "XNA"] <- NA
+grid.arrange(ggplot(drop_na(results_train), aes(x = GENDER, fill = GENDER)) +
+               geom_bar(stat = "count")
+             + theme(legend.position="none"),
+             ggplot(drop_na(results_train), aes(GENDER, TARGET, fill = GENDER)) +
+               geom_bar(position = "dodge", stat = "summary", fun.y = "mean")
+             + theme(legend.position="none")
+             )
+count(drop_na(results_train), GENDER)
+mylogit_GENDER <- glm(TARGET ~ GENDER, results_train, family = "binomial", na.action = na.omit)
+
+summary(mylogit_GENDER)
+```
+
+
+## Owns a car? and Owns Car v. Target
+
+```{r owns_car, echo=FALSE, warning=FALSE, comment = NA}
+grid.arrange(ggplot(results_train, aes(x = OWNS_CAR, fill = OWNS_CAR)) +
+               geom_bar(stat = "count")
+             + theme(legend.position="none"),
+             ggplot(results_train, aes(OWNS_CAR, TARGET, fill = OWNS_CAR)) +
+               geom_bar(position = "dodge", stat = "summary", fun.y = "mean")
+             + theme(legend.position="none")
+             )
+count(results_train, OWNS_CAR)
+mylogit_OWNS_CAR <- glm(TARGET ~ OWNS_CAR, results_train, family = "binomial")
+
+summary(mylogit_OWNS_CAR)
+```
+
+## Age of car and Age of Car v. Target
+
+```{r age_of_car, echo=FALSE, warning=FALSE, comment = NA}
+grid.arrange(ggplot(results_train, aes(x = AGE_OF_CAR)) +
+               geom_histogram(stat = "bin", binwidth = 2.5, col = "grey", fill = "blue"),
+             ggplot(results_train, aes(factor(TARGET), AGE_OF_CAR)) +
+               geom_jitter( alpha = .05)  +
+               geom_boxplot( alpha = .5, color = "blue") +
+               stat_summary(fun.y = "mean", geom = "point", color = "red", shape = 8, size = 4)
+)
+summary(results_train$AGE_OF_CAR)
+count(results_train, factor(AGE_OF_CAR))
+# Anderson Darling Test
+ad.test(results_train$AGE_OF_CAR)
+wilcox.test(AGE_OF_CAR ~ TARGET, data = results_train)
+```
+
+
+## Owns Real Estate? and Owns RE v. Target
+
+```{r owns_realty, echo=FALSE, warning=FALSE, comment = NA}
+grid.arrange(ggplot(results_train, aes(x = OWNS_REALTY, fill = OWNS_REALTY)) +
+               geom_bar(stat = "count")
+             + theme(legend.position="none"),
+             ggplot(results_train, aes(OWNS_REALTY, TARGET, fill = OWNS_REALTY)) +
+               geom_bar(position = "dodge", stat = "summary", fun.y = "mean")
+             + theme(legend.position="none")
+             )
+count(results_train, OWNS_REALTY)
+mylogit_OWNS_REALTY <- glm(TARGET ~ OWNS_REALTY, results_train, family = "binomial")
+
+summary(mylogit_OWNS_REALTY)
+```
+
+## Number of Children and Number of Children v. Target
+
+```{r children, echo=FALSE, warning=FALSE, comment = NA}
+grid.arrange(ggplot(results_train, aes(x = factor(CHILDREN))) +
+               geom_bar(stat = "count"),
+             ggplot(results_train, aes(factor(CHILDREN), TARGET)) +
+               geom_bar(position = "dodge", stat = "summary", fun.y = "mean")
+             )
+count(results_train, CHILDREN)
+mylogit_CHILDREN <- glm(TARGET ~ CHILDREN, data = results_train, family = "binomial")
+
+summary(mylogit_CHILDREN)
+```
+
+## Total Income and Total Income v. Target
+
+```{r total_income, echo=FALSE, warning=FALSE, comment = NA}
+grid.arrange(ggplot(results_train, aes(x = TOTAL_INCOME)) +
+  geom_histogram(bins = 20, col = "grey", fill = "blue") +
+    xlim(0, 500000),
+  # scale_y_log10()
+  ggplot(results_train, aes(factor(TARGET), TOTAL_INCOME)) +
+               geom_jitter( alpha = .05)  +
+               geom_boxplot( alpha = .5, color = "blue") +
+               stat_summary(fun.y = "mean", geom = "point", color = "red", shape = 8, size = 4) +
+    ylim(0, 500000)
+)
+summary(results_train$TOTAL_INCOME)
+# Anderson Darling Test
+ad.test(results_train$TOTAL_INCOME)
+wilcox.test(TOTAL_INCOME ~ TARGET, data = results_train)
+```
+
+<!-- ## Total Income and Total Income v. Target -->
+
+<!-- ```{r echo=FALSE, warning=FALSE, comment = NA} -->
+<!-- ggplot(results_train, aes(x = TOTAL_INCOME)) + -->
+<!--   geom_histogram(bins = 20) + -->
+<!--   scale_x_log10(breaks=c(1e+5,1e+6)) + -->
+<!--   xlim(0, 1e+6) -->
+<!-- summary(results_train$TOTAL_INCOME) -->
+<!-- ``` -->
+
+## Amount of Loan and Amount of Loan v. Target
+
+```{r loan_amount, echo=FALSE, warning=FALSE, comment = NA}
+grid.arrange(ggplot(results_train, aes(x = LOAN_AMOUNT)) +
+  geom_histogram(stat = "bin", bins = 20, col = "grey", fill = "blue"),
+  ggplot(results_train, aes(factor(TARGET), LOAN_AMOUNT)) +
+               geom_jitter( alpha = .05)  +
+               geom_boxplot( alpha = .5, color = "blue") +
+               stat_summary(fun.y = "mean", geom = "point", color = "red", shape = 8, size = 4)
+)
+summary(results_train$LOAN_AMOUNT)
+# Anderson Darling Test
+ad.test(results_train$LOAN_AMOUNT)
+wilcox.test(LOAN_AMOUNT ~ TARGET, data = results_train)
+```
+
+## Monthly Payment and Monthly Payment v. Target
+
+```{r payment_amount, echo=FALSE, warning=FALSE, comment = NA}
+grid.arrange(ggplot(results_train, aes(x =  PAYMENT_AMOUNT)) +
+               geom_histogram(stat = "bin", col = "grey", fill = "blue") +
+               xlim(0, 1e+5),
+             ggplot(results_train, aes(factor(TARGET), PAYMENT_AMOUNT)) +
+               ylim(0, 1e+5) +
+               geom_jitter( alpha = .05)  +
+               geom_boxplot( alpha = .5, color = "blue") +
+               stat_summary(fun.y = "mean", geom = "point", color = "red", shape = 8, size = 4)
+)
+  
+summary(results_train$PAYMENT_AMOUNT)
+# Anderson Darling Test
+ad.test(results_train$PAYMENT_AMOUNT)
+wilcox.test(PAYMENT_AMOUNT ~ TARGET, data = results_train)
+
+```
+
+## Price of Goods Purchcased with the Loan and Price v. Target
+
+```{r purchase_price_of_goods, echo=FALSE, warning=FALSE, comment = NA}
+grid.arrange(ggplot(results_train, aes(x = PURCHASE_PRICE_OF_GOODS)) +
+               geom_histogram(stat = "bin", col = "grey", fill = "blue"),
+             ggplot(results_train, aes(factor(TARGET), PURCHASE_PRICE_OF_GOODS)) +
+               geom_jitter( alpha = .05)  +
+               geom_boxplot( alpha = .5, color = "blue") +
+               stat_summary(fun.y = "mean", geom = "point", color = "red", shape = 8, size = 4)
+)
+summary(results_train$PURCHASE_PRICE_OF_GOODS)
+# Anderson Darling Test
+ad.test(results_train$PURCHASE_PRICE_OF_GOODS)
+wilcox.test(PURCHASE_PRICE_OF_GOODS ~ TARGET, data = results_train)
+```
+
+## Ratio of Loan to Payment Amount and Ratio v. Target
+
+```{r ratio_loan_to_annuity, echo=FALSE, warning=FALSE, comment = NA}
+grid.arrange(ggplot(results_train, aes(x = RATIO_LOAN_TO_ANNUITY)) +
+               geom_histogram(col = "grey", fill = "blue"),
+             ggplot(results_train, aes(factor(TARGET), RATIO_LOAN_TO_ANNUITY)) +
+               geom_jitter( alpha = .05)  +
+               geom_boxplot( alpha = .5, color = "blue") +
+               stat_summary(fun.y = "mean", geom = "point", color = "red", shape = 8, size = 4)
+)
+summary(results_train$RATIO_LOAN_TO_ANNUITY)
+# Anderson Darling Test
+ad.test(results_train$RATIO_LOAN_TO_ANNUITY)
+wilcox.test(RATIO_LOAN_TO_ANNUITY ~ TARGET, data = results_train)
+```
+
+## Type of Income and Type of Income v. Target
+
+```{r income_type, echo=FALSE, warning=FALSE, comment = NA}
+grid.arrange(ggplot(results_train, aes(x = INCOME_TYPE_GROUPED, fill = INCOME_TYPE_GROUPED)) +
+  geom_bar(stat = "count", show.legend = FALSE) +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1)),
+  ggplot(results_train, aes(INCOME_TYPE_GROUPED, TARGET, fill = INCOME_TYPE_GROUPED)) +
+    geom_bar(position = "dodge", stat = "summary", fun.y = "mean", show.legend = FALSE) +
+    theme(axis.text.x = element_text(angle = 90))
+  )
+count(results_train, INCOME_TYPE_GROUPED)
+mylogit_INCOME_TYPE <- glm(TARGET ~ INCOME_TYPE_GROUPED, results_train, family = "binomial")
+
+summary(mylogit_INCOME_TYPE)
+```
+
+## Education Level and Education Level v. Target
+
+```{r education, echo=FALSE, warning=FALSE, comment = NA}
+grid.arrange(ggplot(results_train, aes(x = EDUCATION, fill = EDUCATION)) +
+               geom_bar(stat = "count") +
+               theme(legend.position="none", axis.text.x = element_text(angle = 90, hjust = 1)),
+             ggplot(results_train, aes(EDUCATION, TARGET, fill = EDUCATION)) +
+               geom_bar(position = "dodge", stat = "summary", fun.y = "mean") +
+               theme(legend.position="none", axis.text.x = element_text(angle = 90, hjust = 1))
+      )
+count(results_train, EDUCATION)
+mylogit_EDUCATION <- glm(TARGET ~ EDUCATION, results_train, family = "binomial")
+
+summary(mylogit_EDUCATION)
+```
+
+## Marital Status and Marital Status v. Target
+
+```{r marital_status, echo=FALSE, warning=FALSE, comment = NA}
+grid.arrange(ggplot(results_train, aes(x = MARITAL_STATUS, fill = MARITAL_STATUS)) +
+               geom_bar(stat = "count")
+             + theme(legend.position="none"),
+             ggplot(results_train, aes(MARITAL_STATUS, TARGET, fill = MARITAL_STATUS)) +
+               geom_bar(position = "dodge", stat = "summary", fun.y = "mean")
+             + theme(legend.position="none")
+)
+count(results_train, MARITAL_STATUS)
+mylogit_MARITAL <- glm(TARGET ~ MARITAL_STATUS, results_train, family = "binomial")
+
+summary(mylogit_MARITAL)
+```
+
+## Housing Status and Housing Status v. Target
+
+```{r housing_status, echo=FALSE, warning=FALSE, comment = NA}
+grid.arrange(ggplot(results_train, aes(x = HOUSING_STATUS, fill = HOUSING_STATUS)) +
+               geom_bar(stat = "count") +
+               theme(legend.position="none", axis.text.x = element_text(angle = 90, hjust = 1)),
+             ggplot(results_train, aes(HOUSING_STATUS, TARGET, fill = HOUSING_STATUS)) +
+               geom_bar(position = "dodge", stat = "summary", fun.y = "mean") +
+               theme(legend.position="none", axis.text.x = element_text(angle = 90, hjust = 1))
+)
+count(results_train, HOUSING_STATUS)
+mylogit_HOUSING_STATUS <- glm(TARGET ~ HOUSING_STATUS, results_train, family = "binomial")
+
+summary(mylogit_HOUSING_STATUS)
+```
+
+## Years at Current Job and Years v. Target
+
+```{r years_at_curernt_job, echo=FALSE, warning=FALSE, comment = NA}
+grid.arrange(ggplot(results_train, aes(x = YEARS_AT_CURRENT_JOB)) +
+  geom_histogram(binwidth = 2, col = "grey", fill = "blue") +
+  xlim(0, 50),
+  ggplot(results_train, aes(factor(TARGET), YEARS_AT_CURRENT_JOB)) +
+    ylim(0, 50) +
+               geom_jitter( alpha = .05)  +
+               geom_boxplot( alpha = .5, color = "blue") +
+               stat_summary(fun.y = "mean", geom = "point", color = "red", shape = 8, size = 4)
+)
+summary(results_train$YEARS_AT_CURRENT_JOB)
+# Anderson Darling Test
+ad.test(results_train$YEARS_AT_CURRENT_JOB)
+wilcox.test(YEARS_AT_CURRENT_JOB ~ TARGET, data = results_train)
+```
+
+## Employer Organization Type and Type v. Target
+
+```{r employer_type, echo=FALSE, warning=FALSE, comment = NA}
+grid.arrange(ggplot(results_train, aes(x = EMPLOYER_TYPE_GROUPED, fill = EMPLOYER_TYPE_GROUPED)) +
+  geom_bar(stat = "count", show.legend = FALSE) +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1)),
+  ggplot(results_train, aes(EMPLOYER_TYPE_GROUPED, TARGET, fill = EMPLOYER_TYPE_GROUPED)) +
+    geom_bar(position = "dodge", stat = "summary", fun.y = "mean", show.legend = FALSE) +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1))
+)
+count(results_train, EMPLOYER_TYPE_GROUPED)
+mylogit_EMPL_TYPE <- glm(TARGET ~ EMPLOYER_TYPE_GROUPED, results_train, family = "binomial")
+
+summary(mylogit_EMPL_TYPE)
+```
+
+## Years Since Getting Current Identity Documnent and Years v. Target
+
+```{r years_since_doc, echo=FALSE, warning=FALSE, comment = NA}
+grid.arrange(ggplot(results_train, aes(x = YEARS_SINCE_GETTING_IDENTITY_DOCUMENT)) +
+               geom_histogram(col = "grey", fill = "blue"),
+             ggplot(results_train, aes(factor(TARGET), YEARS_SINCE_GETTING_IDENTITY_DOCUMENT)) +
+               geom_jitter( alpha = .05)  +
+               geom_boxplot( alpha = .5, color = "blue") +
+               stat_summary(fun.y = "mean", geom = "point", color = "red", shape = 8, size = 4)
+)
+summary(results_train$YEARS_SINCE_GETTING_IDENTITY_DOCUMENT)
+# Anderson Darling Test
+ad.test(results_train$YEARS_SINCE_GETTING_IDENTITY_DOCUMENT)
+wilcox.test(YEARS_SINCE_GETTING_IDENTITY_DOCUMENT ~ TARGET, data = results_train)
+```
+
+## Rating of Region and Rating v. Target
+The meaning of this variable is not reported in the materials made available by HOME CREDIT. It may relate to population density, per capita welath of the region, but this information is not supplied.
+```{r region_city_rating, echo=FALSE, warning=FALSE, comment = NA}
+grid.arrange(ggplot(results_train, aes(x = REGION_AND_CITY_RATING, fill = factor(REGION_AND_CITY_RATING))) +
+  geom_bar(stat = "count")
+  + theme(legend.position="none"),
+  ggplot(results_train, aes(factor(REGION_AND_CITY_RATING), TARGET, fill = factor(REGION_AND_CITY_RATING))) +
+    geom_bar(position = "dodge", stat = "summary", fun.y = "mean")
+  + theme(legend.position="none")
+  )
+count(results_train, REGION_AND_CITY_RATING)
+mylogit_REGION <- glm(TARGET ~ REGION_AND_CITY_RATING, results_train, family = "binomial")
+
+summary(mylogit_REGION)
+```
+
+## Maximum dates late payment as reprted to HOME CREDIT by and outside credit bureau
+```{r max_days_late_bureau, echo=FALSE, warning=FALSE, comment = NA}
+grid.arrange(ggplot(results_train, aes(x = MAX_DAYS_LATE_BUREAU)) +
+               geom_histogram(col = "grey", fill = "blue", bins = 60) +
+               scale_y_log10(),
+             ggplot(results_train, aes(factor(TARGET), MAX_DAYS_LATE_BUREAU)) +
+               geom_jitter( alpha = .05)  +
+               geom_boxplot( alpha = .5, color = "blue") +
+               stat_summary(fun.y = "mean", geom = "point", color = "red", shape = 8, size = 4)
+)
+summary(results_train$MAX_DAYS_LATE_BUREAU)
+# Anderson Darling Test
+ad.test(results_train$MAX_DAYS_LATE_BUREAU)
+wilcox.test(MAX_DAYS_LATE_BUREAU ~ TARGET, data = results_train)
+```
+
+#Findings and Recommendations
+  The Area Under ROC Curve was used as the primary statistic for evaluating model performance. The most successful model was the Random Forest model, trained on 80% of the data, with an AUC score of 0.7297.
+
+  The following table summarizes the overall performance of the different models.
+
+`r knitr::kable(RFModelEval)`
+
+#Specific Statistics for Each Model with AUC Graphs
+  More detiled statistical analysis for the performance of each model is given below, accompanied by a graphs deonstrating the AUC performance of each mode. Again, overall, the Random Forest model trained on 80% of the data perfored best overall. It's overall Accuracy, measured as True Positives + True Negatives / Total Negatives was the highest, at 0.6829. Its Specificity (TN/N) was also highest overall at 0.9573. Its Precision (TP/TP+FP) 0.1541 was also the highest of the model tested here.
+  
+  The specifics for the performance of each model follows:
+
+#Using a Generalized Linear Model
+##Trained on 100% of the train data
+###Area under ROC Curve = `r RFModelEval[1,5]`
+```{r GLM, echo=FALSE}
+include_graphics('./assets/rf_GLM_TEST.png', dpi = 120)
+```
+
+###Confusion Matrix
+```{r}
+confMtx <- as.data.frame(read.csv("./assets/confGLM.csv"))[-1]
+colnames(confMtx) <- c("Predicted 1", "Predicted 0")
+rownames(confMtx) <- c("Actual 1", "Actual 0")
+confMtx
+```
+
+
+###Sensitivity: TP/(TP+FN) = `r confMtx[1,1] / (confMtx[1,1] + confMtx[1,2])`
+###Specificity: TN/N = `r confMtx[2,2] / (confMtx[2,2] + confMtx[2,1])`
+###Precision: TP/(TP+FP) = `r confMtx[1,1] / (confMtx[1,1] + confMtx[2,1])`
+###Accuracy = `r confMtx[1,1] + confMtx[2,2] / (confMtx[1,1] + confMtx[1,2] + confMtx[2,1] + confMtx[2,2])`
+###AUC Score = `r RFModelEval[1,5]`
+
+
+#Using a Naive Bayes Model
+##Trained on 100% of the train data
+###Area under ROC Curve = `r RFModelEval[2,5]`
+```{r Naive Bayes, echo=FALSE}
+include_graphics('./assets/rf_NB_TEST.png', dpi = 120)
+```
+
+###Confusion Matrix
+```{r}
+confMtx <- as.data.frame(read.csv("./assets/confNB.csv"))[-1]
+colnames(confMtx) <- c("Predicted 1", "Predicted 0")
+rownames(confMtx) <- c("Actual 1", "Actual 0")
+confMtx
+```
+
+
+###Sensitivity: TP/(TP+FN) = `r confMtx[1,1] / (confMtx[1,1] + confMtx[1,2])`
+###Specificity: TN/N = `r confMtx[2,2] / (confMtx[2,2] + confMtx[2,1])`
+###Precision: TP/(TP+FP) = `r confMtx[1,1] / (confMtx[1,1] + confMtx[2,1])`
+###Accuracy = `r confMtx[1,1] + confMtx[2,2] / (confMtx[1,1] + confMtx[1,2] + confMtx[2,1] + confMtx[2,2])`
+###AUC Score = `r RFModelEval[2,5]`
+
+
+#Using a K Nearest Neighbor Model
+##Trained on 100% of the train data
+###Area under ROC Curve = `r RFModelEval[3,5]`
+```{r K Nearest Neighbor, echo=FALSE}
+include_graphics('./assets/rf_knn_TEST.png', dpi = 120)
+```
+
+###Confusion Matrix
+```{r}
+confMtx <- as.data.frame(read.csv("./assets/confKnn.csv"))[-1]
+colnames(confMtx) <- c("Predicted 1", "Predicted 0")
+rownames(confMtx) <- c("Actual 1", "Actual 0")
+confMtx
+```
+
+
+###Sensitivity: TP/(TP+FN) = `r confMtx[1,1] / (confMtx[1,1] + confMtx[1,2])`
+###Specificity: TN/N = `r confMtx[2,2] / (confMtx[2,2] + confMtx[2,1])`
+###Precision: TP/(TP+FP) = `r confMtx[1,1] / (confMtx[1,1] + confMtx[2,1])`
+###Accuracy = `r confMtx[1,1] + confMtx[2,2] / (confMtx[1,1] + confMtx[1,2] + confMtx[2,1] + confMtx[2,2])`
+###AUC Score = `r RFModelEval[3,5]`
+
+
+#Using a Random Forest Model
+##Trained on 5% of the train data
+###Area under ROC Curve = `r RFModelEval[4,5]`
+```{r RF05, echo=FALSE}
+include_graphics('./assets/rf_RF05_TEST.png', dpi = 120)
+```
+
+###Confusion Matrix
+```{r}
+confMtx <- as.data.frame(read.csv("./assets/confRF05.csv"))[-1]
+colnames(confMtx) <- c("Predicted 1", "Predicted 0")
+rownames(confMtx) <- c("Actual 1", "Actual 0")
+confMtx
+```
+
+
+###Sensitivity: TP/(TP+FN) = `r confMtx[1,1] / (confMtx[1,1] + confMtx[1,2])`
+###Specificity: TN/N = `r confMtx[2,2] / (confMtx[2,2] + confMtx[2,1])`
+###Precision: TP/(TP+FP) = `r confMtx[1,1] / (confMtx[1,1] + confMtx[2,1])`
+###Accuracy = `r confMtx[1,1] + confMtx[2,2] / (confMtx[1,1] + confMtx[1,2] + confMtx[2,1] + confMtx[2,2])`
+###AUC Score = `r RFModelEval[4,5]`
+
+
+##Trained on 10% of the train data
+###Area under ROC Curve = `r RFModelEval[5,5]`
+```{r RF10, echo=FALSE}
+include_graphics('./assets/rf_RF10_TEST.png', dpi = 120)
+```
+
+###Confusion Matrix
+```{r}
+confMtx <- as.data.frame(read.csv("./assets/confRF10.csv"))[-1]
+colnames(confMtx) <- c("Predicted 1", "Predicted 0")
+rownames(confMtx) <- c("Actual 1", "Actual 0")
+confMtx
+```
+
+
+###Sensitivity: TP/(TP+FN) = `r confMtx[1,1] / (confMtx[1,1] + confMtx[1,2])`
+###Specificity: TN/N = `r confMtx[2,2] / (confMtx[2,2] + confMtx[2,1])`
+###Precision: TP/(TP+FP) = `r confMtx[1,1] / (confMtx[1,1] + confMtx[2,1])`
+###Accuracy = `r confMtx[1,1] + confMtx[2,2] / (confMtx[1,1] + confMtx[1,2] + confMtx[2,1] + confMtx[2,2])`
+###AUC Score = `r RFModelEval[5,5]`
+
+
+##Trained on 20% of the train data
+###Area under ROC Curve = `r RFModelEval[6,5]`
+```{r RF20, echo=FALSE}
+include_graphics('./assets/rf_RF20_TEST.png', dpi = 120)
+```
+
+###Confusion Matrix
+```{r}
+confMtx <- as.data.frame(read.csv("./assets/confRF20.csv"))[-1]
+colnames(confMtx) <- c("Predicted 1", "Predicted 0")
+rownames(confMtx) <- c("Actual 1", "Actual 0")
+confMtx
+```
+
+
+###Sensitivity: TP/(TP+FN) = `r confMtx[1,1] / (confMtx[1,1] + confMtx[1,2])`
+###Specificity: TN/N = `r confMtx[2,2] / (confMtx[2,2] + confMtx[2,1])`
+###Precision: TP/(TP+FP) = `r confMtx[1,1] / (confMtx[1,1] + confMtx[2,1])`
+###Accuracy = `r confMtx[1,1] + confMtx[2,2] / (confMtx[1,1] + confMtx[1,2] + confMtx[2,1] + confMtx[2,2])`
+###AUC Score = `r RFModelEval[6,5]`
+
+
+##Trained on 30% of the train data
+###Area under ROC Curve = `r RFModelEval[7,5]`
+```{r RF30, echo=FALSE}
+include_graphics('./assets/rf_RF30_TEST.png', dpi = 120)
+```
+
+###Confusion Matrix
+```{r}
+confMtx <- as.data.frame(read.csv("./assets/confRF30.csv"))[-1]
+colnames(confMtx) <- c("Predicted 1", "Predicted 0")
+rownames(confMtx) <- c("Actual 1", "Actual 0")
+confMtx
+```
+
+
+###Sensitivity: TP/(TP+FN) = `r confMtx[1,1] / (confMtx[1,1] + confMtx[1,2])`
+###Specificity: TN/N = `r confMtx[2,2] / (confMtx[2,2] + confMtx[2,1])`
+###Precision: TP/(TP+FP) = `r confMtx[1,1] / (confMtx[1,1] + confMtx[2,1])`
+###Accuracy = `r confMtx[1,1] + confMtx[2,2] / (confMtx[1,1] + confMtx[1,2] + confMtx[2,1] + confMtx[2,2])`
+###AUC Score = `r RFModelEval[7,5]`
+
+
+##Trained on 60% of the train data
+###Area under ROC Curve = `r RFModelEval[8,5]`
+```{r RF60, echo=FALSE}
+include_graphics('./assets/rf_RF60_TEST.png', dpi = 120)
+```
+
+###Confusion Matrix
+```{r}
+confMtx <- as.data.frame(read.csv("./assets/confRF60.csv"))[-1]
+colnames(confMtx) <- c("Predicted 1", "Predicted 0")
+rownames(confMtx) <- c("Actual 1", "Actual 0")
+confMtx
+```
+
+
+###Sensitivity: TP/(TP+FN) = `r confMtx[1,1] / (confMtx[1,1] + confMtx[1,2])`
+###Specificity: TN/N = `r confMtx[2,2] / (confMtx[2,2] + confMtx[2,1])`
+###Precision: TP/(TP+FP) = `r confMtx[1,1] / (confMtx[1,1] + confMtx[2,1])`
+###Accuracy = `r confMtx[1,1] + confMtx[2,2] / (confMtx[1,1] + confMtx[1,2] + confMtx[2,1] + confMtx[2,2])`
+###AUC Score = `r RFModelEval[8,5]`
+
+
+##Trained on 80% of the train data
+###Area under ROC Curve = `r RFModelEval[9,5]`
+```{r RF80, echo=FALSE}
+include_graphics('./assets/rf_RF80_TEST.png', dpi = 120)
+```
+
+###Confusion Matrix
+```{r}
+confMtx <- as.data.frame(read.csv("./assets/confRF80.csv"))[-1]
+colnames(confMtx) <- c("Predicted 1", "Predicted 0")
+rownames(confMtx) <- c("Actual 1", "Actual 0")
+confMtx
+```
+
+
+###Sensitivity: TP/(TP+FN) = `r confMtx[1,1] / (confMtx[1,1] + confMtx[1,2])`
+###Specificity: TN/N = `r confMtx[2,2] / (confMtx[2,2] + confMtx[2,1])`
+###Precision: TP/(TP+FP) = `r confMtx[1,1] / (confMtx[1,1] + confMtx[2,1])`
+###Accuracy = `r confMtx[1,1] + confMtx[2,2] / (confMtx[1,1] + confMtx[1,2] + confMtx[2,1] + confMtx[2,2])`
+###AUC Score = `r RFModelEval[9,5]`
+
+
+#Conclusion and Suggestions
+  As one might anticipate, accurately predicting the liklihood of a client defaulting or struggling to repay debt is challenging. Changing life circumstanes, changing environmental or politcal conditions can significantly alter overall outcomes.
+
+  Area Under a ROC Curve is a useful measurement of a model's performance vs. random selection however. Given that random selection would typically yield an AUC score of .5, the Random Forest model trained on 80% of the data is a significant improvement upon this. With a AUC score of 0.7297 this model would be best used in combination with Home Credit's current decision processes to decrease risk and maximize profits.
+
+
+<!-- ##Trained on 100% of the train data -->
+<!-- ###Area under ROC Curve = `r RFModelEval[7,5]` -->
+<!-- ```{r RF100, echo=FALSE} -->
+<!-- include_graphics('./assets/rf_RF100_TEST.png', dpi = 120) -->
+<!-- ``` -->
+
+<!-- ###Confusion Matrix -->
+<!-- ```{r} -->
+<!-- confMtx <- as.data.frame(read.csv("./assets/confRF100.csv"))[-1] -->
+<!-- colnames(confMtx) <- c("Predicted 1", "Predicted 0") -->
+<!-- rownames(confMtx) <- c("Actual 1", "Actual 0") -->
+<!-- confMtx -->
+<!-- ``` -->
+
+
+<!-- ###Sensitivity: TP/(TP+FN) = `r confMtx[1,1] / (confMtx[1,1] + confMtx[1,2])` -->
+<!-- ###Specificity: TN/N = `r confMtx[2,2] / (confMtx[2,2] + confMtx[2,1])` -->
+<!-- ###Precision: TP/(TP+FP) = `r confMtx[1,1] / (confMtx[1,1] + confMtx[2,1])` -->
+<!-- ###Accuracy = `r confMtx[1,1] + confMtx[2,2] / (confMtx[1,1] + confMtx[1,2] + confMtx[2,1] + confMtx[2,2])` -->
+<!-- ###AUC Score = `r RFModelEval[7,5]` -->
