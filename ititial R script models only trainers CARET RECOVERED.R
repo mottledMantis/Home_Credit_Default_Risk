@@ -18,7 +18,7 @@ library(ranger)
 library(doParallel)
 
 
-cl <- makePSOCKcluster(4)
+cl <- makePSOCKcluster(5)
 registerDoParallel(cl)
 
 
@@ -35,8 +35,6 @@ names(RFModelEval) <- c(
   "AUC Score",
   "Specificity: (TN/N)",
   "Precision: TP/(TP+FP)",
-  "ntree",
-  "mtry",
   "Comment"
 )
 
