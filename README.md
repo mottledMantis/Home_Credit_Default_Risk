@@ -7,4 +7,4 @@ https://github.com/mottledMantis/Home_Credit_Default_Risk/blob/master/final_repo
 https://github.com/mottledMantis/Home_Credit_Default_Risk/blob/master/Home_Credit_Presentation.pdf - slide presentation
 https://github.com/mottledMantis/Home_Credit_Default_Risk/blob/master/ititial%20R%20script%20models%20only%20trainers%20CARET%20RECOVERED.R - the code used for training the models
 https://github.com/mottledMantis/Home_Credit_Default_Risk/blob/master/ititial%20R%20script%20models%20only%20test%20and%20plot%20CARET.R - the code for predictions and for generating plots used in the final report and
-https://github.com/mottledMantis/Home_Credit_Default_Risk/blob/master/ititial%20R%20script%20target%20factor%20dummies.R - the code originally used to clean the data
+https://github.com/mottledMantis/Home_Credit_Default_Risk/blob/master/intial%20script%20for%20data%20cleaning.R - the code originally used to clean the data
