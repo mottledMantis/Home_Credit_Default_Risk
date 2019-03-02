@@ -45,39 +45,40 @@ RFModelEval_sm <- RFModelEval
 
 #Introduction
 #Assessing the Problem
-  Traditionally, borrowing costs have been tied to creditors' assessment of credit default risk based on simple, but broad financial criteria. Unfortunately, this leaves many potential borrowers out of the market, or paying higher interest rates. Conversely, these same criteria may not always be sufficient to redudce default risk by clients who may meet the criteria, but may eventually default because of other, potentially forseeable, reasons not sufficiently accounted for in the criteria.
+  Traditionally, borrowing costs have been tied to creditors’ assessment of credit default risk based on simple, but broad financial criteria. Unfortunately, this leaves many potential borrowers out of the market, or paying higher interest rates. Conversely, these same criteria may not always be sufficient to reduce default risk by clients who may meet the criteria, but may nonetheless eventually default because of other, potentially foreseeable, reasons not sufficiently accounted for in the criteria.
 
 #Client Solution
-  Using historical client credit data, I will create a Machine Laerning model capable of predicting, as accurately as possible, an individual applicants's liklihood of defaulting. This model can then be used by Home Creidt to make more refined decisions as to whom they offer loans, the types of loans offered and the interest terms.
+  Using historical client credit data, I will create a Machine Learning model capable of predicting, as accurately as possible, an individual applicant’s likelihood of defaulting. This model can then be used by Home Credit to make more refined decisions as to whom they offer loans, the types of loans offered and the interest terms.
 
 #Steps Taken
-  1. Cleaned and merged the "train" data to get a single data frame for incorporation in ML algorythms;
-  2. Examined the data using P-tests to determine significant features for incorporation into the ML algorhythms;
-  3. Reserved 80% of the training data for training the algorythms and 20% for testing
-  4. Using Caret package, trained several different models:
-    a. General Linear Model, using 100% of the apportioned train data
-    b. Naive Bayes model, using 100% of the apportioned train data
-      c. K Nearest Neighbor Model, using 100% of the apportioned train data
-  d. Random Forest Model, with the data segmented into 5%, 10%, 20%, 30%, 60% and 80% groups for comparision, and as a check against overfitting
-  
-  5. Used visualization tools to deomonstrate these correlations and the accuracy of the model.
+  1.	Using R, cleaned and merged the “train” data to get a single data frame for incorporation into ML algorithms;
+  2.	Examined the data using P-tests to determine significant features for incorporation into the ML algorithms;
+  3.	Reserved 80% of the training data for training the algorithms and 20% for testing;
+  4.	Using R’s Caret package, trained several different models:
+    a.	General Linear Model, using 100% of the apportioned train data
+    b.	Naive Bayes model, using 100% of the apportioned train data
+    c.	K Nearest Neighbor Model, using 100% of the apportioned train data
+    d.	Random Forest Model, with the data segmented into 5%, 10%, 20%, 30%, 60% and 80% groups for comparison, and as a check against overfitting
+  5.	Used visualization tools to demonstrate these correlations and the accuracy of the model.
+
   
 #Data Cleanup and Feature Selection
   
-  1) I examined P values for each potential feature vs. TARGET to assist in determining its releavance and significance for use in ML models;
-  2) I used a correlation chart to determine highly correlated (and therefore redundant) features for removal so that they won't be overrepresenated in the ML trainers at later steps;
-  4) I supplied a plot for each variable that demonstrates simple counts for each categorical variable or binned continuous variable;
-  5) I supplied a plot demonstrating the significance of each variable to the TARGET variable;
-  6) I supplied summary statistical information for each variable;
-- for continuous features, I used the Shapiro-Wilks Test (shapiro.test())to test for distributive normality;
-- upon finding that my continous features are not normally distriubted, I applied the Wilcoxon Rank Sum Test (wilcox.test()) as the t-test assumption of normality is not met.
+  1.	I examined P values for each potential feature vs. TARGET to assist in determining its relevance and significance for use in ML models;
+  2.	I used a correlation chart to determine highly correlated (and therefore redundant) features for removal so that they won’t be overrepresented in the ML trainers at later steps;
+  3.	I supplied a plot for each variable that demonstrates simple counts for each categorical variable or binned continuous variable;
+  4.	I supplied a plot demonstrating the significance of each variable to the TARGET variable;
+  5.	I supplied summary statistical information for each variable;
+    •	for continuous features, I used the Shapiro-Wilks Test (shapiro.test()) to test for distributive normality;
+    •	upon finding that my continuous features are not normally distributed, I applied the Wilcoxon Rank Sum Test (wilcox.test()) as the t-test assumption of normality is not met.
+
 
 
 #Correlation matrix with ONLY correlation values > .6
-  The full correlation matrix for the features of this data set is too large to legibly display. Therefore a simplified correlation matrix follows, which displays ONLY correlation values between features that are greater than 0.6.
+  The full correlation matrix for the features of this data set is too large to legibly display here. Therefore, a simplified correlation matrix follows, which displays ONLY correlation values between features that are greater than 0.6.
   
-  Based on this correlation matrix, I removed three features from the model: 
-INCOME_TYPE_GROUPEDPensioner, EMPLOYER_TYPE_GROUPEDXNA, and EDUCATIONHigher_education
+  Based on this correlation matrix, I removed three features from the model: INCOME_TYPE_GROUPEDPensioner, EMPLOYER_TYPE_GROUPEDXNA, and EDUCATIONHigher_education.
+
 
 ```{r correlation chart filtered, echo=FALSE}
 
@@ -109,14 +110,14 @@ ggcorr(data = NULL, cor_matrix = c_matrix, nbreaks = 8, palette = "RdGy", label 
 
 
 ##Summary of P values for each feature
-The following table of p values will be used for final feature selection in our ML models
+  The following table of P-values will be used for final feature selection in our ML models. Of particular note are the “Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1” which demonstrate the significance of the feature based on is P-value.
 
 
 ```{r echo = FALSE}
 print(summary(glm(formula = TARGET ~ ., family = "binomial", data = results_train)))
 ```
 
-#The overall distribution of the Target is represented in the following plot
+#Distribution of the Dependent Variable “Target”
   The following plot displays a simple distribution of our TARGET values. TARGET = 1 means that the sample had some problem repaying their load. TARGET = 0 means that the sample successfully repaid their load without issue.
 
   Note that because the TARGET data is highly unbalanced, I downsampled the data sets when training each model.
@@ -130,8 +131,6 @@ count(results_train, TARGET)
 
 #Feature Significance
   The following statistics and plots demonstrate both simple counts for each feature, as well as the significance of each feature to our ML models.
-
-  Of particlar note are the "Signif. codes:  0 *** 0.001 ** 0.01 * 0.05 . 0.1   1" which demonstrate the significance of the feature based on its P-value.
 
 
 ##Loan Type and Loan Type v. Target
@@ -167,7 +166,7 @@ wilcox.test(AGE ~ TARGET, data = results_train)
 ```
 
 ## Gender and Gender v. Target
-Note that, becsuse the number of XNA values for gender was extermely low (total count of 4), they have been removed in the following.
+  Note that, because the number of XNA values for gender was extremely low (total count of 4), they have been removed in the following.
 
 ```{r gender, echo=FALSE, warning=FALSE, comment = NA}
 results_train$GENDER <- as.factor(results_train$GENDER)
@@ -462,7 +461,7 @@ wilcox.test(YEARS_SINCE_GETTING_IDENTITY_DOCUMENT ~ TARGET, data = results_train
 ```
 
 ## Rating of Region and Rating v. Target
-The meaning of this variable is not reported in the materials made available by HOME CREDIT. It may relate to population density, per capita welath of the region, but this information is not supplied.
+  The meaning of this variable is not reported in the materials made available by HOME CREDIT. It may relate to population density, per capita wealth of the region, but this information is not supplied. 
 ```{r region_city_rating, echo=FALSE, warning=FALSE, comment = NA}
 grid.arrange(ggplot(results_train, aes(x = REGION_AND_CITY_RATING, fill = factor(REGION_AND_CITY_RATING))) +
   geom_bar(stat = "count")
@@ -501,9 +500,10 @@ wilcox.test(MAX_DAYS_LATE_BUREAU ~ TARGET, data = results_train)
 `r knitr::kable(RFModelEval)`
 
 #Specific Statistics for Each Model with AUC Graphs
-  More detiled statistical analysis for the performance of each model is given below, accompanied by a graphs deonstrating the AUC performance of each mode. Again, overall, the Random Forest model trained on 80% of the data perfored best overall. It's overall Accuracy, measured as True Positives + True Negatives / Total Negatives was the highest, at 0.6829. Its Specificity (TN/N) was also highest overall at 0.9573. Its Precision (TP/TP+FP) 0.1541 was also the highest of the model tested here.
+  More detailed statistical analysis for the performance of each model is given below, accompanied by graphs demonstrating the AUC performance of each mode. Again, overall, the Random Forest model trained on 80% of the data performed best overall. It’s overall Accuracy, measured as True Positives + True Negatives / Total Negatives was the highest, at 0.6829. Its Specificity (TN/N) was also highest overall at 0.9573. Its Precision (TP/TP+FP) 0.1541 was also the highest of the model tested here.
   
-  The specifics for the performance of each model follows:
+  The specifics for the performance of each model follow:
+
 
 #Using a Generalized Linear Model
 ##Trained on 100% of the train data
@@ -708,9 +708,10 @@ confMtx
 
 
 #Conclusion and Suggestions
-  As one might anticipate, accurately predicting the liklihood of a client defaulting or struggling to repay debt is challenging. Changing life circumstanes, changing environmental or politcal conditions can significantly alter overall outcomes.
+  As one might anticipate, accurately predicting the likelihood of a client defaulting or struggling to repay debt is challenging. Changing life circumstances, and changing environmental or political conditions can significantly alter overall outcomes.
+  
+  Area Under a ROC Curve is a useful measurement of a model’s performance vs. random selection, however. Given that random selection would typically yield an AUC score of .5, the Random Forest model trained on 80% of the data is a significant improvement upon this. With an AUC score of 0.7297 this model would be best used in combination with Home Credit’s current decision processes to decrease risk and maximize profits.
 
-  Area Under a ROC Curve is a useful measurement of a model's performance vs. random selection however. Given that random selection would typically yield an AUC score of .5, the Random Forest model trained on 80% of the data is a significant improvement upon this. With a AUC score of 0.7297 this model would be best used in combination with Home Credit's current decision processes to decrease risk and maximize profits.
 
 
 <!-- ##Trained on 100% of the train data -->
